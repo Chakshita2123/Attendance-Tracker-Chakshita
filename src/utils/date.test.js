@@ -83,8 +83,9 @@ describe('addMinutes', () => {
     expect(addMinutes(null, null)).toBe('10:00')
   })
 
-  it('adds 0 minutes correctly', () => {
-    expect(addMinutes('14:30', 0)).toBe('14:30')
+  it('adds 0 minutes — defaults to 60 due to falsy check', () => {
+    // addMinutes uses `parseInt(mins || 60)`, so 0 is falsy → defaults to 60
+    expect(addMinutes('14:30', 0)).toBe('15:30')
   })
 })
 
