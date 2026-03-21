@@ -1,31 +1,54 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 export function useAuth() {
-  // Bypassing authentication: Hardcode a default user with ID 1
-  // (ID 1 works perfectly with your SQLite UserData table schema)
-  const [user, setUser] = useState({ 
-    id: 1, 
-    name: 'Local Developer', 
-    email: 'dev@local.com', 
-    role: 'student' 
-  })
-  const [loading, setLoading] = useState(false)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
   const [signUpDone, setSignUpDone] = useState(false)
 
   useEffect(() => {
-    // Keep the loading state false immediately to skip the loading screen
-    setLoading(false)
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null)
+      }
+    )
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  // Stub out the auth functions so the UI doesn't break if buttons are clicked
-  const signIn = async () => {}
-  const signUp = async () => {}
-  const signInWithGoogle = async () => {}
+  const signIn = async (email, password) => {
+    setAuthError(null)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) setAuthError(error.message)
+  }
+
+  const signUp = async (email, password) => {
+    setAuthError(null)
+    const { error } = await supabase.auth.signUp({ email, password })
+    if (error) {
+      setAuthError(error.message)
+    } else {
+      setSignUpDone(true)
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    setAuthError(null)
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
+    if (error) setAuthError(error.message)
+  }
+
   const signOut = async () => {
-    // Optionally allow "logout" to reset back to null if they really want,
-    // but usually in a bypassed state, we just do nothing.
-    alert("Auth is currently bypassed! You are always signed in.")
+    const { error } = await supabase.auth.signOut()
+    if (error) setAuthError(error.message)
   }
 
   return {
