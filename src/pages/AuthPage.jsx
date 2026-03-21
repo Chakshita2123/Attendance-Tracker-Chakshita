@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle, Mail } from 'lucide-react'
 import { useAurora, useNeural } from '../hooks/useBackground'
 import FloatingShapes from '../components/effects/FloatingShapes'
 
-export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn, signUp, signInWithGoogle }) {
+export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn, signUp }) {
   const auroraRef = useRef(null)
   const neuralRef = useRef(null)
   useAurora(auroraRef)
@@ -128,35 +128,6 @@ export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn,
             </button>
           </div>
         </form>
-
-        <div className="auth-divider">OR</div>
-
-        {/* Google — redirectTo fix is in useAuth.js */}
-        <button
-          className="btn btn-lg btn-full"
-          style={{ gap: 10 }}
-          onClick={signInWithGoogle}
-          disabled={busy}
-        >
-          <img src="https://www.google.com/favicon.ico" width="16" height="16" alt="Google" />
-          Continue with Google
-        </button>
-
-        {/* Supabase dashboard reminder */}
-        <div style={{
-          marginTop: 16,
-          padding: '10px 12px',
-          background: 'rgba(56,189,248,.06)',
-          border: '1px solid rgba(56,189,248,.15)',
-          borderRadius: 'var(--r-sm)',
-          fontSize: 10,
-          color: 'var(--text-3)',
-          lineHeight: 1.6,
-        }}>
-          <strong style={{ color: 'var(--blue)' }}>Google redirect not working?</strong><br />
-          Go to Supabase → Authentication → URL Configuration → Redirect URLs
-          and add <code style={{ color: 'var(--text-2)' }}>{window.location.origin}</code>
-        </div>
       </div>
     </div>
   )

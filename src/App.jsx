@@ -65,7 +65,6 @@ export default function App() {
           setSignUpDone={setSignUpDone}
           signIn={async (e, p) => { try { await signIn(e, p) } catch {} }}
           signUp={async (e, p) => { try { await signUp(e, p) } catch {} }}
-          signInWithGoogle={async () => { try { await signInWithGoogle() } catch {} }}
         />
         <Toast toast={toast}/>
       </>

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabase } from '../lib/supabase'
 import { DEFAULT_DATA } from '../constants'
 
 const LS_KEY = 'markd_v1'
@@ -12,41 +11,35 @@ export function useAttendance(user) {
   const isFirstLoad = useRef(true)
   const saveTimer   = useRef(null)
 
-  // ── Load from Supabase when user logs in ──
+  // ── Load from Local Backend when user logs in ──
   useEffect(() => {
     if (!user) { setDataLoading(false); return }
 
     const load = async () => {
       setDataLoading(true)
       try {
-        const { data: remote, error } = await supabase
-          .from('attendance_data')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
-
-        if (error && error.code !== 'PGRST116') throw error
+        const res = await fetch(`http://localhost:5000/api/data?userId=${user.id}`)
+        if (!res.ok) throw new Error('Failed to load data')
+        
+        const remote = await res.json()
 
         if (remote) {
           setData({
             subjects:        remote.subjects         || [],
             timetable:       remote.timetable        || DEFAULT_DATA.timetable,
             attendance:      remote.attendance       || {},
-            dailyLog:        remote.daily_log        || {},
+            dailyLog:        remote.dailyLog         || remote.daily_log || {},
             phase:           remote.phase            || 'setup',
-            lectureSettings: remote.lecture_settings || DEFAULT_DATA.lectureSettings,
+            lectureSettings: remote.lectureSettings  || remote.lecture_settings || DEFAULT_DATA.lectureSettings,
           })
         } else {
-          // First time user — create empty row
-          await supabase.from('attendance_data').insert([{
-            user_id:    user.id,
-            ...DEFAULT_DATA,
-            updated_at: new Date().toISOString(),
-          }])
+          // First time user — just use default data
+          // An initial POST isn't strictly necessary since saving triggers on edit
           setData(DEFAULT_DATA)
         }
         setSyncStatus('synced')
-      } catch {
+      } catch (err) {
+        console.error(err)
         setSyncStatus('error')
         const local = localStorage.getItem(LS_KEY)
         if (local) setData(JSON.parse(local))
@@ -66,29 +59,32 @@ export function useAttendance(user) {
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
       try {
-        const { error } = await supabase.from('attendance_data').upsert({
-          user_id:          user.id,
-          subjects:         data.subjects,
-          timetable:        data.timetable,
-          attendance:       data.attendance,
-          daily_log:        data.dailyLog || {},
-          phase:            data.phase,
-          lecture_settings: data.lectureSettings || DEFAULT_DATA.lectureSettings,
-          updated_at:       new Date().toISOString(),
+        const res = await fetch('http://localhost:5000/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, data })
         })
-        if (error) throw error
+        if (!res.ok) throw new Error('Failed to sync')
         setSyncStatus('synced')
       } catch {
         setSyncStatus('error')
       }
     }, 1000)
     return () => clearTimeout(saveTimer.current)
-  }, [data.subjects, data.timetable, data.attendance, data.phase, user]) // eslint-disable-line
+  }, [data, user]) // eslint-disable-line
 
   // ── Hard reset ──
   const resetData = async () => {
     try {
-      if (user) await supabase.from('attendance_data').delete().eq('user_id', user.id)
+      if (user) {
+        // We do not have a hard reset DELETE endpoint yet,
+        // but we can overwrite the data with empty defaults.
+        await fetch('http://localhost:5000/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, data: DEFAULT_DATA })
+        })
+      }
       localStorage.removeItem(LS_KEY)
       setData(DEFAULT_DATA)
       isFirstLoad.current = false

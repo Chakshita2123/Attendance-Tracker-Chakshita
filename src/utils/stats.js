@@ -11,15 +11,15 @@ export const calcSubjectStats = (subjects, attendance) => {
 
 /** Attendance % for a subject (P+L count as present) */
 export const attendancePct = (stats) =>
-  stats.total === 0 ? 0 : Math.round((stats.P / stats.total) * 100)
+  stats.total === 0 ? 0 : Math.round(((stats.P + stats.L) / stats.total) * 100)
 
 /** How many more classes needed to reach 75% */
 export const classesNeeded = (stats) =>
-  Math.ceil((0.75 * stats.total - stats.P) / 0.25)
+  Math.ceil((0.75 * stats.total - (stats.P + stats.L)) / 0.25)
 
 /** How many classes can be missed while staying at/above 75% */
 export const canMiss = (stats) =>
-  Math.max(0, Math.floor(stats.P / 0.75) - stats.total)
+  Math.max(0, Math.floor((stats.P + stats.L) / 0.75) - stats.total)
 
 /** Overall % across all subjects */
 export const overallPct = (attendance) => {

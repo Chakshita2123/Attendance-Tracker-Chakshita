@@ -1,0 +1,21 @@
+
+> attendance-tracker@0.0.0 lint
+> eslint .
+
+
+/home/sagarchhikara/Attendance-Tracker/fix.js
+  1:12  error  'require' is not defined  no-undef
+
+/home/sagarchhikara/Attendance-Tracker/fix2.js
+  1:12  error  'require' is not defined  no-undef
+
+/home/sagarchhikara/Attendance-Tracker/src/App.jsx
+   952:22  error    'err' is defined but never used                                                                          no-unused-vars
+  1053:8   warning  React Hook useEffect has a missing dependency: 'data'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/sagarchhikara/Attendance-Tracker/test.js
+  1:12  error  'require' is not defined                                                             no-undef
+  3:7   error  'out' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+✖ 6 problems (5 errors, 1 warning)
+

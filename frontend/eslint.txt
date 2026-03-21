@@ -1,0 +1,56 @@
+
+C:\Users\Chakshita\OneDrive\Documents\Attendance Tracker\src\App.jsx
+   216:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  214 |         const isReduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  215 |         if (isReduced) {
+> 216 |             setCount(target);
+      |             ^^^^^^^^ Avoid calling setState() directly within an effect
+  217 |             prevCountRef.current = target;
+  218 |             return;
+  219 |         }  react-hooks/set-state-in-effect
+   626:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  624 |   useEffect(() => {
+  625 |     if (!supabase) {
+> 626 |       setIsLoading(false);
+      |       ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  627 |       return;
+  628 |     }
+  629 |     supabase.auth.getSession().then(({ data: { session } }) => {                                                                                                     react-hooks/set-state-in-effect
+   647:37  error  'error' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         no-unused-vars
+   712:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  710 |     
+  711 |     if (user && supabase) {
+> 712 |       setSyncStatus('syncing');
+      |       ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  713 |       if (saveTimeout.current) clearTimeout(saveTimeout.current);
+  714 |       
+  715 |       saveTimeout.current = setTimeout(async () => {                                                              react-hooks/set-state-in-effect
+   794:28  error  'supabaseUrl' is not defined                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-undef
+   794:43  error  'supabaseKey' is not defined                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-undef
+   866:36  error  'pushUndo' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          no-unused-vars
+  1041:11  error  'todayDayOfWeek' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                no-unused-vars
+  1350:21  error  'fillClass' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     no-unused-vars
+
+✖ 9 problems (9 errors, 0 warnings)
+
