@@ -1,36 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const prisma = require('../db');
 
 // POST /api/attendance - Mark attendance
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { userId, classId, status } = req.body;
+  if (!userId || !classId || !status) {
+    return res.status(400).json({ error: 'userId, classId, and status are required' });
+  }
 
-  db.run(`INSERT INTO Attendance (userId, classId, status) VALUES (?, ?, ?)`, 
-    [userId, classId, status], 
-    function(err) {
-      if (err) return res.status(500).json({ error: 'Failed to mark attendance' });
-      res.status(201).json({ message: 'Attendance marked', record: { id: this.lastID, userId, classId, status } });
+  try {
+    const record = await prisma.attendance.create({
+      data: { userId, classId: parseInt(classId), status },
     });
+    res.status(201).json({ message: 'Attendance marked', record });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to mark attendance' });
+  }
 });
 
 // GET /api/attendance/class/:id - Get attendance for a class
-router.get('/class/:id', (req, res) => {
-  const classId = req.params.id;
-  db.all(`
-    SELECT Attendance.id, Attendance.classId, Attendance.status, Attendance.date, Attendance.userId, User.name as userName
-    FROM Attendance
-    LEFT JOIN User ON Attendance.userId = User.id
-    WHERE classId = ?
-  `, [classId], (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Failed to fetch attendance' });
-    
-    const records = rows.map(r => ({
-      ...r,
-      user: { id: r.userId, name: r.userName }
-    }));
+router.get('/class/:id', async (req, res) => {
+  const classId = parseInt(req.params.id);
+
+  try {
+    const records = await prisma.attendance.findMany({
+      where: { classId },
+    });
     res.json(records);
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch attendance' });
+  }
 });
 
 module.exports = router;
