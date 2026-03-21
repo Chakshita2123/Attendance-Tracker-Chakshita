@@ -9,24 +9,23 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Initialize SQLite database
-require('./db');
-
 // Main Root
 app.get('/', (req, res) => {
-  res.send('Attendance Tracker API is running using Native SQLite!');
+  res.send('Attendance Tracker API is running using Neon PostgreSQL!');
 });
 
-const authRoutes = require('./routes/auth');
 const classRoutes = require('./routes/classes');
 const attendanceRoutes = require('./routes/attendance');
 const dataRoutes = require('./routes/data');
 
-app.use('/api/auth', authRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/data', dataRoutes);
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
