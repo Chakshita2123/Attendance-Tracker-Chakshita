@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react'
+import { StackHandler, StackProvider, StackTheme } from '@stackframe/react'
 import { useAuth }       from './hooks/useAuth'
 import { useAttendance } from './hooks/useAttendance'
 import { useToast }      from './hooks/useToast'
+import { stackApp }      from './lib/stack'
 
 import AuthPage      from './pages/AuthPage'
 import SetupPage     from './pages/SetupPage'
@@ -19,6 +21,17 @@ export default function App() {
 
   const [activeTab,  setActiveTab]  = useState('setup')
   const [undoStack,  setUndoStack]  = useState([])
+  const path = typeof window !== 'undefined' ? window.location.pathname : '/'
+
+  if (stackApp && path.startsWith('/handler')) {
+    return (
+      <StackProvider app={stackApp}>
+        <StackTheme>
+          <StackHandler app={stackApp} location={path} fullPage />
+        </StackTheme>
+      </StackProvider>
+    )
+  }
 
   /* ── Undo ── */
   const pushUndo = useCallback((nextState) => {
@@ -65,6 +78,7 @@ export default function App() {
           setSignUpDone={setSignUpDone}
           signIn={async (e, p) => { try { await signIn(e, p) } catch {} }}
           signUp={async (e, p) => { try { await signUp(e, p) } catch {} }}
+          signInWithGoogle={async () => { try { await signInWithGoogle() } catch {} }}
         />
         <Toast toast={toast}/>
       </>

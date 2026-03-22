@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
-import { AlertCircle, CheckCircle, Mail } from 'lucide-react'
+import { AlertCircle, Mail } from 'lucide-react'
 import { useAurora, useNeural } from '../hooks/useBackground'
 import FloatingShapes from '../components/effects/FloatingShapes'
 
-export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn, signUp }) {
+export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn, signUp, signInWithGoogle }) {
   const auroraRef = useRef(null)
   const neuralRef = useRef(null)
   useAurora(auroraRef)
@@ -128,6 +128,28 @@ export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn,
             </button>
           </div>
         </form>
+
+        <div style={{ margin: '14px 0 10px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <div style={{ fontSize: 12, color: 'var(--text-2)', letterSpacing: '0.12em' }}>OR</div>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-full btn-lg"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            try {
+              await signInWithGoogle()
+            } finally {
+              setBusy(false)
+            }
+          }}
+        >
+          {busy ? '…' : 'CONTINUE WITH GOOGLE'}
+        </button>
       </div>
     </div>
   )

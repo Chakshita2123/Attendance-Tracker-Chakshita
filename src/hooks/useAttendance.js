@@ -2,6 +2,16 @@ import { useState, useEffect, useRef } from 'react'
 import { DEFAULT_DATA } from '../constants'
 
 const LS_KEY = 'markd_v1'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+
+async function getAuthHeaders(user) {
+  if (!user?.getAuthJson) return {}
+  const { accessToken } = await user.getAuthJson()
+
+  return accessToken
+    ? { 'x-stack-access-token': accessToken }
+    : {}
+}
 
 export function useAttendance(user) {
   const [data,       setData]       = useState(DEFAULT_DATA)
@@ -18,7 +28,9 @@ export function useAttendance(user) {
     const load = async () => {
       setDataLoading(true)
       try {
-        const res = await fetch(`http://localhost:5000/api/data?userId=${user.id}`)
+        const res = await fetch(`${API_BASE_URL}/api/data`, {
+          headers: await getAuthHeaders(user),
+        })
         if (!res.ok) throw new Error('Failed to load data')
         
         const remote = await res.json()
@@ -59,10 +71,13 @@ export function useAttendance(user) {
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/data', {
+        const res = await fetch(`${API_BASE_URL}/api/data`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id, data })
+          headers: {
+            'Content-Type': 'application/json',
+            ...(await getAuthHeaders(user)),
+          },
+          body: JSON.stringify({ data }),
         })
         if (!res.ok) throw new Error('Failed to sync')
         setSyncStatus('synced')
@@ -79,10 +94,13 @@ export function useAttendance(user) {
       if (user) {
         // We do not have a hard reset DELETE endpoint yet,
         // but we can overwrite the data with empty defaults.
-        await fetch('http://localhost:5000/api/data', {
+        await fetch(`${API_BASE_URL}/api/data`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id, data: DEFAULT_DATA })
+          headers: {
+            'Content-Type': 'application/json',
+            ...(await getAuthHeaders(user)),
+          },
+          body: JSON.stringify({ data: DEFAULT_DATA }),
         })
       }
       localStorage.removeItem(LS_KEY)

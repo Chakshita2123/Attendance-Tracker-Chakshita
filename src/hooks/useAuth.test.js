@@ -1,36 +1,32 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 
-// Mock Supabase before importing the hook
-const mockUnsubscribe = vi.fn()
-let authChangeCallback = null
+const mockGetUser = vi.fn()
+const mockSignInWithCredential = vi.fn()
+const mockSignUpWithCredential = vi.fn()
+const mockSignInWithOAuth = vi.fn()
+const mockSignOut = vi.fn()
 
-const mockSupabase = {
-  auth: {
-    getSession: vi.fn(),
-    onAuthStateChange: vi.fn((cb) => {
-      authChangeCallback = cb
-      return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
-    }),
-    signInWithPassword: vi.fn(),
-    signUp: vi.fn(),
-    signInWithOAuth: vi.fn(),
-    signOut: vi.fn(),
-  },
+const mockStackApp = {
+  getUser: mockGetUser,
+  signInWithCredential: mockSignInWithCredential,
+  signUpWithCredential: mockSignUpWithCredential,
+  signInWithOAuth: mockSignInWithOAuth,
 }
 
-vi.mock('../lib/supabase', () => ({
-  supabase: mockSupabase,
+vi.mock('../lib/stack', () => ({
+  isStackConfigured: true,
+  stackApp: mockStackApp,
 }))
 
 const { useAuth } = await import('./useAuth')
 
 describe('useAuth', () => {
   beforeEach(() => {
-    authChangeCallback = null
-    mockSupabase.auth.getSession.mockResolvedValue({
-      data: { session: null },
-    })
+    mockGetUser.mockResolvedValue(null)
+    mockSignInWithCredential.mockResolvedValue({ status: 'ok' })
+    mockSignUpWithCredential.mockResolvedValue({ status: 'ok' })
+    mockSignInWithOAuth.mockResolvedValue()
   })
 
   afterEach(() => {
@@ -39,15 +35,12 @@ describe('useAuth', () => {
 
   it('starts with loading=true and user=null', () => {
     const { result } = renderHook(() => useAuth())
-    // Before getSession resolves, user is null
     expect(result.current.user).toBeNull()
   })
 
-  it('sets user after getSession resolves with a session', async () => {
-    const fakeUser = { id: 'uuid-123', email: 'test@test.com' }
-    mockSupabase.auth.getSession.mockResolvedValue({
-      data: { session: { user: fakeUser } },
-    })
+  it('sets user after getUser resolves with a user', async () => {
+    const fakeUser = { id: 'uuid-123', primaryEmail: 'test@test.com' }
+    mockGetUser.mockResolvedValue(fakeUser)
 
     const { result } = renderHook(() => useAuth())
 
@@ -58,10 +51,6 @@ describe('useAuth', () => {
   })
 
   it('sets user to null when no session exists', async () => {
-    mockSupabase.auth.getSession.mockResolvedValue({
-      data: { session: null },
-    })
-
     const { result } = renderHook(() => useAuth())
 
     await waitFor(() => {
@@ -70,22 +59,25 @@ describe('useAuth', () => {
     })
   })
 
-  it('signIn calls supabase.auth.signInWithPassword', async () => {
-    mockSupabase.auth.signInWithPassword.mockResolvedValue({ error: null })
+  it('signIn calls stackApp.signInWithCredential', async () => {
+    const fakeUser = { id: 'uuid-123' }
+    mockGetUser.mockResolvedValue(fakeUser)
 
     const { result } = renderHook(() => useAuth())
     await act(async () => {
       await result.current.signIn('user@test.com', 'password123')
     })
 
-    expect(mockSupabase.auth.signInWithPassword).toHaveBeenCalledWith({
+    expect(mockSignInWithCredential).toHaveBeenCalledWith({
       email: 'user@test.com',
       password: 'password123',
+      noRedirect: true,
     })
   })
 
   it('signIn sets authError on failure', async () => {
-    mockSupabase.auth.signInWithPassword.mockResolvedValue({
+    mockSignInWithCredential.mockResolvedValue({
+      status: 'error',
       error: { message: 'Invalid credentials' },
     })
 
@@ -97,23 +89,24 @@ describe('useAuth', () => {
     expect(result.current.authError).toBe('Invalid credentials')
   })
 
-  it('signUp calls supabase.auth.signUp and sets signUpDone', async () => {
-    mockSupabase.auth.signUp.mockResolvedValue({ error: null })
+  it('signUp calls stackApp.signUpWithCredential and sets signUpDone', async () => {
 
     const { result } = renderHook(() => useAuth())
     await act(async () => {
       await result.current.signUp('new@test.com', 'password123')
     })
 
-    expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
+    expect(mockSignUpWithCredential).toHaveBeenCalledWith({
       email: 'new@test.com',
       password: 'password123',
+      noRedirect: true,
     })
     expect(result.current.signUpDone).toBe(true)
   })
 
   it('signUp sets authError on failure', async () => {
-    mockSupabase.auth.signUp.mockResolvedValue({
+    mockSignUpWithCredential.mockResolvedValue({
+      status: 'error',
       error: { message: 'Email already taken' },
     })
 
@@ -126,20 +119,26 @@ describe('useAuth', () => {
     expect(result.current.signUpDone).toBe(false)
   })
 
-  it('signOut calls supabase.auth.signOut', async () => {
-    mockSupabase.auth.signOut.mockResolvedValue({ error: null })
+  it('signOut signs out the current user', async () => {
+    mockGetUser.mockResolvedValue({ id: 'uuid-123', signOut: mockSignOut })
 
     const { result } = renderHook(() => useAuth())
     await act(async () => {
       await result.current.signOut()
     })
 
-    expect(mockSupabase.auth.signOut).toHaveBeenCalled()
+    expect(mockSignOut).toHaveBeenCalled()
   })
 
-  it('cleans up onAuthStateChange subscription on unmount', () => {
-    const { unmount } = renderHook(() => useAuth())
-    unmount()
-    expect(mockUnsubscribe).toHaveBeenCalled()
+  it('signInWithGoogle delegates to stackApp', async () => {
+    const { result } = renderHook(() => useAuth())
+
+    await act(async () => {
+      await result.current.signInWithGoogle()
+    })
+
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith('google', {
+      returnTo: window.location.origin,
+    })
   })
 })
