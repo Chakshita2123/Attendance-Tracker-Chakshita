@@ -867,7 +867,12 @@ export default function App() {
         setIsLoading(false);
         return;
     }
-    await supabase.auth.signInWithOAuth({ provider: 'google' });
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
   };
 
   const handleLogout = async () => {
@@ -1497,4 +1502,3 @@ function AnalyticsTab({ data }) {
         </div>
     );
 }
-

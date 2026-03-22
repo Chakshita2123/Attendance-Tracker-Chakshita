@@ -21,8 +21,8 @@ to Supabase's allowed redirect list:
    - Your production URL (e.g. `https://yourapp.vercel.app`)
 3. Click **Save**
 
-The code already sends `redirectTo: window.location.origin` so it always
-redirects back to whatever environment the app is running in.
+The code sends `redirectTo: window.location.origin` so it redirects back
+to whatever environment the app is running in.
 
 ## Stack
 
