@@ -3,6 +3,13 @@ import { useState, useEffect } from 'react'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 const TOKEN_KEY = 'markd_auth_token'
 
+function shouldForceLogin() {
+  if (typeof window === 'undefined') return false
+
+  const params = new URLSearchParams(window.location.search)
+  return params.get('forceLogin') === '1'
+}
+
 function getStoredToken() {
   return localStorage.getItem(TOKEN_KEY)
 }
@@ -34,6 +41,16 @@ export function useAuth() {
     let active = true
 
     const loadUser = async () => {
+      if (shouldForceLogin()) {
+        clearToken()
+        if (active) {
+          setUser(null)
+          setSignUpDone(false)
+          setLoading(false)
+        }
+        return
+      }
+
       const token = getStoredToken()
       if (!token) {
         if (active) setLoading(false)
