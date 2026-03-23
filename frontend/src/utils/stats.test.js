@@ -41,6 +41,19 @@ describe('calcSubjectStats', () => {
     const stats = calcSubjectStats(['Math'], { '2025-03-18': { Math: 'P' } })
     expect(stats.Math).toEqual({ P: 1, A: 0, L: 0, total: 1 })
   })
+
+  it('merges tracked attendance with historical baseline data', () => {
+    const attendance = {
+      '2025-03-18': { Math: 'P' },
+      '2025-03-19': { Math: 'A' },
+    }
+    const historicalAttendance = {
+      Math: { P: 8, A: 2, L: 0, total: 10 },
+    }
+
+    const stats = calcSubjectStats(['Math'], attendance, historicalAttendance)
+    expect(stats.Math).toEqual({ P: 9, A: 3, L: 0, total: 12 })
+  })
 })
 
 describe('attendancePct', () => {
@@ -113,6 +126,18 @@ describe('overallPct', () => {
       '2025-03-18': { Math: 'L' },
     }
     expect(overallPct(attendance)).toBe(100)
+  })
+
+  it('includes historical attendance totals', () => {
+    const attendance = {
+      '2025-03-18': { Math: 'P', Physics: 'A' },
+    }
+    const historicalAttendance = {
+      Math: { P: 8, A: 2, L: 0, total: 10 },
+      Physics: { P: 3, A: 1, L: 0, total: 4 },
+    }
+
+    expect(overallPct(attendance, historicalAttendance)).toBe(75)
   })
 })
 

@@ -46,6 +46,7 @@ describe('useAttendance', () => {
       timetable: DEFAULT_DATA.timetable,
       attendance: {},
       dailyLog: {},
+      historicalAttendance: { Math: { P: 8, A: 2, L: 0, total: 10 } },
       phase: 'active',
       lectureSettings: { durationMinutes: 60 },
     }
@@ -61,6 +62,7 @@ describe('useAttendance', () => {
       expect(result.current.dataLoading).toBe(false)
     })
     expect(result.current.data.subjects).toEqual(['Math'])
+    expect(result.current.data.historicalAttendance.Math).toEqual({ P: 8, A: 2, L: 0, total: 10 })
     expect(result.current.data.phase).toBe('active')
     // syncStatus may be 'synced' or 'syncing' (debounced save triggers on data change)
     expect(['synced', 'syncing']).toContain(result.current.syncStatus)

@@ -242,6 +242,7 @@ h3 { font-size: 1rem; letter-spacing: 0.5px; }
   max-width: 860px;
   width: 100%;
   flex: 1;
+  margin: 0 auto;
 }
 .page-animate {
   animation: pageIn 0.3s ease;
@@ -621,6 +622,41 @@ input[type="number"].input::-webkit-inner-spin-button { -webkit-appearance: none
   animation: pageIn 0.2s ease;
 }
 
+.historical-attendance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.historical-attendance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.historical-attendance-subject {
+  min-width: 0;
+}
+
+.historical-attendance-name {
+  font-family: var(--font-head);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.historical-attendance-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* ── 18. Tracker Page ── */
 .date-strip {
   display: flex;
@@ -864,4 +900,6 @@ input[type="number"].input::-webkit-inner-spin-button { -webkit-appearance: none
   .stat-grid { grid-template-columns: 1fr 1fr; }
   .auth-card { padding: 28px 20px; }
   .tracker-toolbar { flex-direction: column; align-items: flex-start; }
+  .historical-attendance-row { flex-direction: column; align-items: flex-start; }
+  .historical-attendance-inputs { width: 100%; }
 }

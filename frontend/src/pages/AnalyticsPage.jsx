@@ -11,9 +11,9 @@ import CalendarHeatmap from '../components/charts/CalendarHeatmap'
 
 export default function AnalyticsPage({ data }) {
   const { subStats, totalDays, pct, chartData } = useMemo(() => {
-    const subStats   = calcSubjectStats(data.subjects, data.attendance)
+    const subStats   = calcSubjectStats(data.subjects, data.attendance, data.historicalAttendance)
     const totalDays  = Object.keys(data.attendance).length
-    const pct        = overallPct(data.attendance)
+    const pct        = overallPct(data.attendance, data.historicalAttendance)
     const chartData  = lastNDays(7).reverse().map(d => {
       const rec = data.attendance[d] || {}
       const vals = Object.values(rec)

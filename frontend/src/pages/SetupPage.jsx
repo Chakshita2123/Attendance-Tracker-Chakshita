@@ -7,6 +7,33 @@ export default function SetupPage({ data, setData, setActiveTab }) {
   const [subInput,  setSubInput]  = useState('')
   const [form, setForm] = useState({ day:null, subject:'', start:'09:00', duration: data.lectureSettings?.durationMinutes || 60 })
 
+  const updateHistoricalAttendance = (subject, field, value) => {
+    const numericValue = Math.max(0, parseInt(value, 10) || 0)
+
+    setData(current => {
+      const currentEntry = current.historicalAttendance?.[subject] || { P: 0, A: 0, L: 0, total: 0 }
+      const nextEntry = { ...currentEntry }
+
+      if (field === 'P') {
+        nextEntry.P = numericValue
+      } else {
+        nextEntry.total = numericValue
+      }
+
+      nextEntry.total = Math.max(nextEntry.total || 0, nextEntry.P || 0)
+      nextEntry.A = Math.max(0, nextEntry.total - nextEntry.P)
+      nextEntry.L = 0
+
+      return {
+        ...current,
+        historicalAttendance: {
+          ...(current.historicalAttendance || {}),
+          [subject]: nextEntry,
+        },
+      }
+    })
+  }
+
   /* ── Subjects ── */
   const addSubject = () => {
     const v = subInput.trim().toUpperCase()
@@ -18,7 +45,17 @@ export default function SetupPage({ data, setData, setActiveTab }) {
 
   const removeSubject = (sub) => {
     const tt = Object.fromEntries(DAYS.map(day => [day, (data.timetable[day]||[]).filter(c=>c.subject!==sub)]))
-    setData(d => ({ ...d, subjects:d.subjects.filter(s=>s!==sub), timetable:tt }))
+    setData(d => {
+      const nextHistorical = { ...(d.historicalAttendance || {}) }
+      delete nextHistorical[sub]
+
+      return {
+        ...d,
+        subjects:d.subjects.filter(s=>s!==sub),
+        timetable:tt,
+        historicalAttendance: nextHistorical,
+      }
+    })
   }
 
   /* ── Classes ── */
@@ -70,9 +107,60 @@ export default function SetupPage({ data, setData, setActiveTab }) {
 
       {canStart && (
         <>
-          {/* Step 2 — Class settings */}
+          {/* Step 2 — Previous attendance */}
           <div className="card mb-md">
-            <div className="setup-step-label"><span className="step-num">2</span> CLASS SETTINGS</div>
+            <div className="setup-step-label"><span className="step-num">2</span> PREVIOUS ATTENDANCE</div>
+            <div className="text-dimmed" style={{ fontSize:11, marginBottom:14 }}>
+              Add the classes you already completed before using the tracker. New entries you mark later will continue from these totals.
+            </div>
+
+            <div className="historical-attendance-list">
+              {data.subjects.map(subject => {
+                const existing = data.historicalAttendance?.[subject] || { P: 0, total: 0 }
+
+                return (
+                  <div key={subject} className="historical-attendance-row">
+                    <div className="historical-attendance-subject">
+                      <div className="historical-attendance-name">{subject}</div>
+                      <div className="text-dimmed" style={{ fontSize:11 }}>
+                        {Math.max(0, (existing.total || 0) - (existing.P || 0))} missed so far
+                      </div>
+                    </div>
+
+                    <div className="historical-attendance-inputs">
+                      <div className="input-wrap" style={{ marginBottom:0 }}>
+                        <label className="input-label">Attended</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="input"
+                          style={{ marginBottom:0, width:96, textAlign:'center' }}
+                          value={existing.P || 0}
+                          onChange={e => updateHistoricalAttendance(subject, 'P', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="input-wrap" style={{ marginBottom:0 }}>
+                        <label className="input-label">Total</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="input"
+                          style={{ marginBottom:0, width:96, textAlign:'center' }}
+                          value={Math.max(existing.total || 0, existing.P || 0)}
+                          onChange={e => updateHistoricalAttendance(subject, 'total', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Step 3 — Class settings */}
+          <div className="card mb-md">
+            <div className="setup-step-label"><span className="step-num">3</span> CLASS SETTINGS</div>
             <div className="flex-between">
               <div>
                 <div style={{ fontFamily:'var(--font-head)', fontSize:'0.9rem', fontWeight:700 }}>Default Lecture Duration</div>
@@ -91,9 +179,9 @@ export default function SetupPage({ data, setData, setActiveTab }) {
             </div>
           </div>
 
-          {/* Step 3 — Timetable */}
+          {/* Step 4 — Timetable */}
           <div className="card mb-md">
-            <div className="setup-step-label"><span className="step-num">3</span> WEEKLY TIMETABLE</div>
+            <div className="setup-step-label"><span className="step-num">4</span> WEEKLY TIMETABLE</div>
             <div className="grid-2" style={{ gap:10 }}>
               {DAYS.map(day => (
                 <div key={day} className="day-card">

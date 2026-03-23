@@ -5,6 +5,7 @@ export const DEFAULT_DATA = {
   timetable: { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [] },
   attendance: {},
   dailyLog: {},
+  historicalAttendance: {},
   phase: 'setup',
   lectureSettings: { durationMinutes: 60 },
 }

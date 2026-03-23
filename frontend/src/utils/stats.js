@@ -1,6 +1,21 @@
-/** Per-subject stats from attendance record */
-export const calcSubjectStats = (subjects, attendance) => {
-  const stats = Object.fromEntries(subjects.map(s => [s, { P: 0, A: 0, L: 0, total: 0 }]))
+const emptyStats = () => ({ P: 0, A: 0, L: 0, total: 0 })
+
+const normalizeHistoricalEntry = (entry = {}) => {
+  const P = Math.max(0, Number(entry.P) || 0)
+  const A = Math.max(0, Number(entry.A) || 0)
+  const L = Math.max(0, Number(entry.L) || 0)
+  const total = Math.max(P + A + L, Number(entry.total) || 0)
+  return { P, A, L, total }
+}
+
+/** Per-subject stats from tracked attendance plus any historical baseline */
+export const calcSubjectStats = (subjects, attendance, historicalAttendance = {}) => {
+  const stats = Object.fromEntries(subjects.map(s => [s, emptyStats()]))
+
+  subjects.forEach(subject => {
+    stats[subject] = normalizeHistoricalEntry(historicalAttendance[subject])
+  })
+
   Object.values(attendance).forEach(day => {
     Object.entries(day).forEach(([sub, status]) => {
       if (stats[sub]) { stats[sub][status]++; stats[sub].total++ }
@@ -22,14 +37,23 @@ export const canMiss = (stats) =>
   Math.max(0, Math.floor((stats.P + stats.L) / 0.75) - stats.total)
 
 /** Overall % across all subjects */
-export const overallPct = (attendance) => {
-  let total = 0, present = 0
+export const overallPct = (attendance, historicalAttendance = {}) => {
+  let total = 0
+  let present = 0
+
+  Object.values(historicalAttendance).forEach(entry => {
+    const normalized = normalizeHistoricalEntry(entry)
+    total += normalized.total
+    present += normalized.P + normalized.L
+  })
+
   Object.values(attendance).forEach(day => {
     Object.values(day).forEach(s => {
       total++
       if (s === 'P' || s === 'L') present++
     })
   })
+
   return total === 0 ? 0 : Math.round((present / total) * 100)
 }
 
