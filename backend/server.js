@@ -17,8 +17,10 @@ app.get('/', (req, res) => {
 
 const classRoutes = require('./routes/classes');
 const attendanceRoutes = require('./routes/attendance');
+const authRoutes = require('./routes/auth');
 const dataRoutes = require('./routes/data');
 
+app.use('/api/auth', authRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/data', dataRoutes);

@@ -1,8 +1,8 @@
 const mockPrisma = require('../helpers/mockPrisma');
 jest.mock('../../db', () => mockPrisma);
-jest.mock('../../stackAuth', () => ({
+jest.mock('../../auth', () => ({
   requireAuth: (req, res, next) => {
-    const token = req.get('x-stack-access-token');
+    const token = req.get('authorization');
     if (!token) {
       return res.status(401).json({ error: 'Missing auth token' });
     }
@@ -24,7 +24,7 @@ describe('GET /api/data', () => {
 
   it('returns null when user has no saved data', async () => {
     mockPrisma.userData.findUnique.mockResolvedValue(null);
-    const res = await request(app).get('/api/data').set('x-stack-access-token', 'token');
+    const res = await request(app).get('/api/data').set('authorization', 'Bearer token');
     expect(res.status).toBe(200);
     expect(res.body).toBeNull();
   });
@@ -35,14 +35,14 @@ describe('GET /api/data', () => {
       userId: 'abc-123',
       dataJson: JSON.stringify(data),
     });
-    const res = await request(app).get('/api/data').set('x-stack-access-token', 'token');
+    const res = await request(app).get('/api/data').set('authorization', 'Bearer token');
     expect(res.status).toBe(200);
     expect(res.body).toEqual(data);
   });
 
   it('calls findUnique with correct userId', async () => {
     mockPrisma.userData.findUnique.mockResolvedValue(null);
-    await request(app).get('/api/data').set('x-stack-access-token', 'token');
+    await request(app).get('/api/data').set('authorization', 'Bearer token');
     expect(mockPrisma.userData.findUnique).toHaveBeenCalledWith({
       where: { userId: 'abc-123' },
     });
@@ -50,7 +50,7 @@ describe('GET /api/data', () => {
 
   it('returns 500 when Prisma throws', async () => {
     mockPrisma.userData.findUnique.mockRejectedValue(new Error('DB connection failed'));
-    const res = await request(app).get('/api/data').set('x-stack-access-token', 'token');
+    const res = await request(app).get('/api/data').set('authorization', 'Bearer token');
     expect(res.status).toBe(500);
     expect(res.body.error).toContain('Database error');
   });
@@ -68,7 +68,7 @@ describe('POST /api/data', () => {
   it('returns 400 when data is missing', async () => {
     const res = await request(app)
       .post('/api/data')
-      .set('x-stack-access-token', 'token')
+      .set('authorization', 'Bearer token')
       .send({});
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('data required');
@@ -81,7 +81,7 @@ describe('POST /api/data', () => {
     });
     const res = await request(app)
       .post('/api/data')
-      .set('x-stack-access-token', 'token')
+      .set('authorization', 'Bearer token')
       .send({ data: { subjects: ['Math'] } });
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('Data saved successfully');
@@ -92,7 +92,7 @@ describe('POST /api/data', () => {
     const data = { subjects: ['Math'], phase: 'setup' };
     await request(app)
       .post('/api/data')
-      .set('x-stack-access-token', 'token')
+      .set('authorization', 'Bearer token')
       .send({ data });
 
     const dataString = JSON.stringify(data);
@@ -107,7 +107,7 @@ describe('POST /api/data', () => {
     mockPrisma.userData.upsert.mockRejectedValue(new Error('Upsert failed'));
     const res = await request(app)
       .post('/api/data')
-      .set('x-stack-access-token', 'token')
+      .set('authorization', 'Bearer token')
       .send({ data: { subjects: [] } });
     expect(res.status).toBe(500);
     expect(res.body.error).toContain('Failed to save data');
@@ -123,7 +123,7 @@ describe('POST /api/data', () => {
     mockPrisma.userData.upsert.mockResolvedValue({});
     const res = await request(app)
       .post('/api/data')
-      .set('x-stack-access-token', 'token')
+      .set('authorization', 'Bearer token')
       .send({ data: largeData });
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('Data saved successfully');

@@ -5,11 +5,8 @@ const LS_KEY = 'markd_v1'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 
 async function getAuthHeaders(user) {
-  if (!user?.getAuthJson) return {}
-  const { accessToken } = await user.getAuthJson()
-
-  return accessToken
-    ? { 'x-stack-access-token': accessToken }
+  return user?.authToken
+    ? { Authorization: `Bearer ${user.authToken}` }
     : {}
 }
 

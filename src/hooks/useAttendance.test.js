@@ -54,7 +54,7 @@ describe('useAttendance', () => {
       json: () => Promise.resolve(remoteData),
     })
 
-    const user = { id: 'uuid-123', getAuthJson: vi.fn().mockResolvedValue({ accessToken: 'token-123' }) }
+    const user = { id: 'uuid-123', authToken: 'token-123' }
     const { result } = renderHook(() => useAttendance(user))
 
     await waitFor(() => {
@@ -72,7 +72,7 @@ describe('useAttendance', () => {
       json: () => Promise.resolve(null),
     })
 
-    const user = { id: 'uuid-123', getAuthJson: vi.fn().mockResolvedValue({ accessToken: 'token-123' }) }
+    const user = { id: 'uuid-123', authToken: 'token-123' }
     const { result } = renderHook(() => useAttendance(user))
 
     await waitFor(() => {
@@ -84,7 +84,7 @@ describe('useAttendance', () => {
   it('sets syncStatus to error on fetch failure', async () => {
     mockFetch.mockRejectedValueOnce(new Error('Network error'))
 
-    const user = { id: 'uuid-123', getAuthJson: vi.fn().mockResolvedValue({ accessToken: 'token-123' }) }
+    const user = { id: 'uuid-123', authToken: 'token-123' }
     const { result } = renderHook(() => useAttendance(user))
 
     await waitFor(() => {
@@ -99,7 +99,7 @@ describe('useAttendance', () => {
 
     mockFetch.mockRejectedValueOnce(new Error('Network error'))
 
-    const user = { id: 'uuid-123', getAuthJson: vi.fn().mockResolvedValue({ accessToken: 'token-123' }) }
+    const user = { id: 'uuid-123', authToken: 'token-123' }
     const { result } = renderHook(() => useAttendance(user))
 
     await waitFor(() => {
@@ -114,13 +114,13 @@ describe('useAttendance', () => {
       json: () => Promise.resolve(null),
     })
 
-    const user = { id: 'my-uuid-456', getAuthJson: vi.fn().mockResolvedValue({ accessToken: 'token-123' }) }
+    const user = { id: 'my-uuid-456', authToken: 'token-123' }
     renderHook(() => useAttendance(user))
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/data',
-        { headers: { 'x-stack-access-token': 'token-123' } }
+        { headers: { Authorization: 'Bearer token-123' } }
       )
     })
   })
@@ -137,7 +137,7 @@ describe('useAttendance', () => {
       json: () => Promise.resolve({ message: 'saved' }),
     })
 
-    const user = { id: 'uuid-123', getAuthJson: vi.fn().mockResolvedValue({ accessToken: 'token-123' }) }
+    const user = { id: 'uuid-123', authToken: 'token-123' }
     const { result } = renderHook(() => useAttendance(user))
 
     await waitFor(() => {
@@ -158,7 +158,7 @@ describe('useAttendance', () => {
       status: 500,
     })
 
-    const user = { id: 'uuid-123', getAuthJson: vi.fn().mockResolvedValue({ accessToken: 'token-123' }) }
+    const user = { id: 'uuid-123', authToken: 'token-123' }
     const { result } = renderHook(() => useAttendance(user))
 
     await waitFor(() => {

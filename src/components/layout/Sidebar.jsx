@@ -11,7 +11,7 @@ export default function Sidebar({ user, activeTab, setActiveTab, phase, syncStat
 
   const syncLabel = syncStatus === 'synced'  ? 'SYNCED'    :
                     syncStatus === 'syncing' ? 'SYNCING…'  : 'OFFLINE'
-  const initials = (user?.user_metadata?.full_name || user?.email || '?')
+  const initials = (user?.name || user?.email || '?')
     .split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
 
   return (
@@ -48,13 +48,10 @@ export default function Sidebar({ user, activeTab, setActiveTab, phase, syncStat
 
         <div className="sidebar-user">
           <div className="s-avatar">
-            {user?.user_metadata?.avatar_url
-              ? <img src={user.user_metadata.avatar_url} alt="avatar" />
-              : initials
-            }
+            {initials}
           </div>
           <div className="s-user-info">
-            <div className="s-user-name">{user?.user_metadata?.full_name || user?.email?.split('@')[0]}</div>
+            <div className="s-user-name">{user?.name || user?.email?.split('@')[0]}</div>
             <div className="s-user-email">{user?.email}</div>
           </div>
           <button className="s-logout-btn" onClick={onLogout} title="Log out"><LogOut size={14}/></button>

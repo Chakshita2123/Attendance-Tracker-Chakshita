@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../db');
-const { requireAuth } = require('../stackAuth');
+const { requireAuth } = require('../auth');
 
 // GET /api/data
 router.get('/', requireAuth, async (req, res) => {

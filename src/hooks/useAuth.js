@@ -1,5 +1,28 @@
 import { useState, useEffect } from 'react'
-import { isStackConfigured, stackApp } from '../lib/stack'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+const TOKEN_KEY = 'markd_auth_token'
+
+function getStoredToken() {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+function storeToken(token) {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+function clearToken() {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+async function parseResponse(response) {
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(data.error || 'Authentication request failed')
+  }
+
+  return data
+}
 
 export function useAuth() {
   const [user, setUser] = useState(null)
@@ -11,22 +34,27 @@ export function useAuth() {
     let active = true
 
     const loadUser = async () => {
-      if (!isStackConfigured || !stackApp) {
-        if (active) {
-          setAuthError('Neon Auth is not configured. Add VITE_STACK_PROJECT_ID and VITE_STACK_PUBLISHABLE_CLIENT_KEY to the root .env file.')
-          setLoading(false)
-        }
+      const token = getStoredToken()
+      if (!token) {
+        if (active) setLoading(false)
         return
       }
 
       try {
-        const currentUser = await stackApp.getUser()
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const data = await parseResponse(response)
+
         if (active) {
-          setUser(currentUser ?? null)
+          setUser({ ...data.user, authToken: token })
         }
       } catch (error) {
+        clearToken()
         if (active) {
-          setAuthError(error instanceof Error ? error.message : 'Failed to initialize Neon Auth')
+          setAuthError(error instanceof Error ? error.message : 'Failed to restore session')
         }
       } finally {
         if (active) {
@@ -44,83 +72,62 @@ export function useAuth() {
 
   const signIn = async (email, password) => {
     setAuthError(null)
-    if (!stackApp) {
-      setAuthError('Neon Auth is not configured')
-      return
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/signin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await parseResponse(response)
+      storeToken(data.token)
+      setUser({ ...data.user, authToken: data.token })
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Failed to sign in')
     }
-
-    const result = await stackApp.signInWithCredential({
-      email,
-      password,
-      noRedirect: true,
-    })
-
-    if (result.status === 'error') {
-      setAuthError(result.error.message)
-      return
-    }
-
-    setUser(await stackApp.getUser())
   }
 
   const signUp = async (email, password) => {
     setAuthError(null)
-    if (!stackApp) {
-      setAuthError('Neon Auth is not configured')
-      return
-    }
-
-    const result = await stackApp.signUpWithCredential({
-      email,
-      password,
-      noRedirect: true,
-    })
-
-    if (result.status === 'error') {
-      setAuthError(result.error.message)
-      return
-    }
-
-    setSignUpDone(true)
-  }
-
-  const signInWithGoogle = async () => {
-    setAuthError(null)
-    if (!stackApp) {
-      setAuthError('Neon Auth is not configured')
-      return
-    }
 
     try {
-      await stackApp.signInWithOAuth('google', {
-        returnTo: window.location.origin,
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       })
+      const data = await parseResponse(response)
+      storeToken(data.token)
+      setUser({ ...data.user, authToken: data.token })
+      setSignUpDone(true)
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Google sign-in failed')
+      setAuthError(error instanceof Error ? error.message : 'Failed to create account')
     }
   }
 
   const signOut = async () => {
     setAuthError(null)
+    const token = getStoredToken()
 
-    if (!stackApp) {
+    try {
+      if (token) {
+        await fetch(`${API_BASE_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      }
+    } finally {
+      clearToken()
       setUser(null)
-      return
+      setSignUpDone(false)
     }
-
-    const currentUser = await stackApp.getUser()
-    if (!currentUser) {
-      setUser(null)
-      return
-    }
-
-    await currentUser.signOut({ redirectUrl: window.location.origin })
-    setUser(null)
   }
 
   return {
     user, loading, authError, setAuthError,
     signUpDone, setSignUpDone,
-    signIn, signUp, signInWithGoogle, signOut,
+    signIn, signUp, signOut,
   }
 }
