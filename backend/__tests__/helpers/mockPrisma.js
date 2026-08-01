@@ -11,14 +11,22 @@ const mockPrisma = {
   userData: {
     findUnique: jest.fn(),
     upsert: jest.fn(),
+    update: jest.fn(),
+    findMany: jest.fn(),
   },
   class: {
     create: jest.fn(),
     findMany: jest.fn(),
+    findFirst: jest.fn(),
+    upsert: jest.fn(),
+    deleteMany: jest.fn(),
   },
   attendance: {
     create: jest.fn(),
     findMany: jest.fn(),
+    findFirst: jest.fn(),
+    upsert: jest.fn(),
+    deleteMany: jest.fn(),
   },
 };
 

@@ -49,6 +49,7 @@ describe('useAttendance', () => {
       historicalAttendance: { Math: { P: 8, A: 2, L: 0, total: 10 } },
       phase: 'active',
       lectureSettings: { durationMinutes: 60 },
+      _version: 5,
     }
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -167,5 +168,70 @@ describe('useAttendance', () => {
       expect(result.current.dataLoading).toBe(false)
     })
     expect(result.current.syncStatus).toBe('error')
+  })
+
+  it('exposes setToastFn for wiring conflict toasts', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(null),
+    })
+
+    const user = { id: 'uuid-123', authToken: 'token-123' }
+    const { result } = renderHook(() => useAttendance(user))
+
+    await waitFor(() => expect(result.current.dataLoading).toBe(false))
+    expect(typeof result.current.setToastFn).toBe('function')
+  })
+
+  it('handles 409 conflict by re-fetching fresh data instead of overwriting', async () => {
+    vi.useFakeTimers()
+
+    // Initial load
+    const initialData = {
+      ...DEFAULT_DATA,
+      subjects: ['Math'],
+      phase: 'active',
+      _version: 2,
+    }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(initialData),
+    })
+
+    const toastFn = vi.fn()
+    const user = { id: 'uuid-123', authToken: 'token-123' }
+    const { result } = renderHook(() => useAttendance(user))
+
+    await waitFor(() => expect(result.current.dataLoading).toBe(false))
+
+    // Inject toast function
+    act(() => { result.current.setToastFn(toastFn) })
+
+    // The debounced save will trigger with stale _version; server returns 409
+    const freshData = { ...DEFAULT_DATA, subjects: ['Math', 'Physics'], phase: 'active', _version: 3 }
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 409, json: () => Promise.resolve({ error: 'conflict' }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(freshData) })
+
+    // Trigger a data change to start the debounced save
+    act(() => {
+      result.current.setData(d => ({ ...d, phase: 'ready' }))
+    })
+
+    // Advance debounce timer
+    await act(async () => { vi.advanceTimersByTime(1100) })
+
+    // Should have re-fetched and applied fresh data
+    await waitFor(() => {
+      expect(result.current.data.subjects).toContain('Physics')
+    })
+
+    // Toast should have been called with a conflict message
+    expect(toastFn).toHaveBeenCalledWith(
+      expect.stringContaining('Conflict'),
+      'error'
+    )
+
+    vi.useRealTimers()
   })
 })

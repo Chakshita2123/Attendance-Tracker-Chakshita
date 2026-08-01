@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useAuth }       from './hooks/useAuth'
 import { useAttendance } from './hooks/useAttendance'
 import { useToast }      from './hooks/useToast'
@@ -14,8 +14,11 @@ import Toast     from './components/ui/Toast'
 
 export default function App() {
   const { user, loading: authLoading, authError, signUpDone, setSignUpDone, signIn, signUp, signOut } = useAuth()
-  const { data, setData, syncStatus, dataLoading, resetData } = useAttendance(user)
+  const { data, setData, syncStatus, dataLoading, resetData, setToastFn } = useAttendance(user)
   const { toast, showToast } = useToast()
+
+  // Wire conflict-toast from useAttendance to the shared toast system
+  useEffect(() => { setToastFn(showToast) }, [setToastFn, showToast])
 
   const [activeTab,  setActiveTab]  = useState('setup')
   const [undoStack,  setUndoStack]  = useState([])

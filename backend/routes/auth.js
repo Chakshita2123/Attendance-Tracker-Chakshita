@@ -1,7 +1,8 @@
 const express = require('express');
-const prisma = require('../db');
+const rateLimit = require('express-rate-limit');
+const User = require('../models/User');
 const {
-  createSession,
+  createToken,
   hashPassword,
   normalizeEmail,
   requireAuth,
@@ -10,9 +11,37 @@ const {
 
 const router = express.Router();
 
+// ── Rate Limiters ──────────────────────────────────────────────────────────────
+// Scoped per IP address. Counts only non-successful responses for signin.
+// In-memory store — adequate for single-instance deployments. For multi-instance
+// production, swap MemoryStore for a Redis store (e.g. rate-limit-redis).
+
+const signinLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,       // 15 minutes
+  limit: 10,                       // max 10 failed attempts per window per IP
+  skipSuccessfulRequests: true,    // only count non-2xx responses (failed logins)
+  standardHeaders: 'draft-7',      // RFC-standard RateLimit headers
+  legacyHeaders: false,
+  message: {
+    error: 'Too many sign-in attempts. Please try again in 15 minutes.',
+  },
+});
+
+const signupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,       // 15 minutes
+  limit: 5,                        // max 5 signup attempts per window per IP
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: {
+    error: 'Too many sign-up attempts. Please try again in 15 minutes.',
+  },
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function sanitizeUser(user) {
   return {
-    id: user.id,
+    id:    user._id.toString(),
     email: user.email,
   };
 }
@@ -29,7 +58,9 @@ function validateCredentials(email, password) {
   return null;
 }
 
-router.post('/signup', async (req, res) => {
+// ── Routes ────────────────────────────────────────────────────────────────────
+
+router.post('/signup', signupLimiter, async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const password = String(req.body.password || '');
   const validationError = validateCredentials(email, password);
@@ -39,18 +70,17 @@ router.post('/signup', async (req, res) => {
   }
 
   try {
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash: hashPassword(password),
-      },
+    const user = await User.create({
+      email,
+      passwordHash: hashPassword(password),
     });
-    const token = await createSession(user.id);
+
+    const token = createToken(user._id.toString(), user.email);
 
     res.status(201).json({
       token,
@@ -61,7 +91,7 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-router.post('/signin', async (req, res) => {
+router.post('/signin', signinLimiter, async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const password = String(req.body.password || '');
   const validationError = validateCredentials(email, password);
@@ -71,12 +101,12 @@ router.post('/signin', async (req, res) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await User.findOne({ email });
     if (!user || !verifyPassword(password, user.passwordHash)) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const token = await createSession(user.id);
+    const token = createToken(user._id.toString(), user.email);
     res.json({
       token,
       user: sanitizeUser(user),
@@ -86,17 +116,15 @@ router.post('/signin', async (req, res) => {
   }
 });
 
-router.get('/me', requireAuth, async (req, res) => {
+router.get('/me', requireAuth, (req, res) => {
+  // req.user is populated by requireAuth from the JWT payload — no DB call needed
   res.json({ user: req.user });
 });
 
-router.post('/logout', requireAuth, async (req, res) => {
-  try {
-    await prisma.session.delete({ where: { id: req.session.id } });
-    res.json({ message: 'Logged out successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to log out: ' + error.message });
-  }
+router.post('/logout', requireAuth, (req, res) => {
+  // Stateless JWT: no server-side session to delete.
+  // The client clears the token from localStorage; this route just confirms logout.
+  res.json({ message: 'Logged out successfully' });
 });
 
 module.exports = router;

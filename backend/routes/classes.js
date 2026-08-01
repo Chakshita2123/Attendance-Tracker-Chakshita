@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../db');
+const Class = require('../models/Class');
 
 // POST /api/classes - Create a new class
 router.post('/', async (req, res) => {
@@ -10,9 +10,7 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const newClass = await prisma.class.create({
-      data: { name, schedule, teacherId },
-    });
+    const newClass = await Class.create({ name, schedule, teacherId });
     res.status(201).json(newClass);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create class' });
@@ -22,7 +20,7 @@ router.post('/', async (req, res) => {
 // GET /api/classes - Get all classes
 router.get('/', async (req, res) => {
   try {
-    const classes = await prisma.class.findMany();
+    const classes = await Class.find();
     res.json(classes);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch classes' });

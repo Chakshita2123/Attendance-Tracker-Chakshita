@@ -1,0 +1,15 @@
+{
+  "name": "markd-attendance-tracker",
+  "version": "1.0.0",
+  "description": "MARKD — unified monorepo: Express backend + React frontend",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+    "dev": "concurrently --kill-others-on-fail --prefix-colors \"bgBlue.bold,bgMagenta.bold\" --names \"be,fe\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "build": "npm install --prefix frontend && npm run build --prefix frontend && npm install --prefix backend",
+    "start": "node backend/server.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

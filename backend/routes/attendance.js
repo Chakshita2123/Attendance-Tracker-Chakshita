@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../db');
+const Attendance = require('../models/Attendance');
 
 // POST /api/attendance - Mark attendance
 router.post('/', async (req, res) => {
@@ -10,9 +10,7 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const record = await prisma.attendance.create({
-      data: { userId, classId: parseInt(classId), status },
-    });
+    const record = await Attendance.create({ userId, classId, status });
     res.status(201).json({ message: 'Attendance marked', record });
   } catch (err) {
     res.status(500).json({ error: 'Failed to mark attendance' });
@@ -21,12 +19,10 @@ router.post('/', async (req, res) => {
 
 // GET /api/attendance/class/:id - Get attendance for a class
 router.get('/class/:id', async (req, res) => {
-  const classId = parseInt(req.params.id);
+  const classId = req.params.id;
 
   try {
-    const records = await prisma.attendance.findMany({
-      where: { classId },
-    });
+    const records = await Attendance.find({ classId });
     res.json(records);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch attendance' });
