@@ -210,7 +210,7 @@ export default function SetupPage({
           {/* Step 3 / 2 — Class settings */}
           <div className="card mb-md">
             <div className="setup-step-label"><span className="step-num">{isEditing ? 2 : 3}</span> CLASS SETTINGS</div>
-            <div className="flex-between">
+            <div className="flex-between mb-sm" style={{ paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
               <div>
                 <div style={{ fontFamily:'var(--font-head)', fontSize:'0.9rem', fontWeight:700 }}>Default Lecture Duration</div>
                 <div className="text-dimmed" style={{ fontSize:11, marginTop:3 }}>Used to calculate time spent in class.</div>
@@ -224,6 +224,22 @@ export default function SetupPage({
                 />
                 <Clock size={13} color="var(--text-3)"/>
                 <span className="text-dimmed" style={{ fontSize:11 }}>min</span>
+              </div>
+            </div>
+
+            <div className="flex-between">
+              <div>
+                <div style={{ fontFamily:'var(--font-head)', fontSize:'0.9rem', fontWeight:700 }}>Target Attendance Threshold</div>
+                <div className="text-dimmed" style={{ fontSize:11, marginTop:3 }}>Minimum attendance percentage target (triggers recovery warnings).</div>
+              </div>
+              <div className="flex-center gap-xs">
+                <input
+                  type="number" min="50" max="100" className="input"
+                  style={{ width:72, marginBottom:0, textAlign:'center' }}
+                  value={data.targetThreshold ?? 75}
+                  onChange={e => setData(d => ({ ...d, targetThreshold: Math.min(100, Math.max(1, parseInt(e.target.value) || 75)) }))}
+                />
+                <span className="text-dimmed" style={{ fontSize:11 }}>%</span>
               </div>
             </div>
           </div>

@@ -103,7 +103,7 @@ h1, h2, h3, .heading-font { font-family: var(--font-heading); font-weight: 700; 
 .banner-red { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
 .banner-green { background: rgba(34,211,165,0.08); border: 1px solid rgba(34,211,165,0.3); color: var(--teal); }
 
-.toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--card); border: 1px solid var(--border); padding: 0.8rem 1.5rem; border-radius: 10px; font-size: 0.85rem; opacity: 0; transition: all 0.3s ease; z-index: 9999; display: flex; align-items: center; gap: 0.5rem; pointer-events: none; white-space: nowrap; }
+.toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--card); border: 1px solid var(--border); padding: 0.8rem 1.5rem; border-radius: 10px; font-size: 0.85rem; opacity: 0; transition: all 0.3s ease; z-index: 9999; display: flex; align-items: center; gap: 0.5rem; pointer-events: none; max-width: 90vw; width: max-content; line-height: 1.4; }
 .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.success { border-color: rgba(34,211,165,0.4); color: var(--teal); }
 .toast.info { border-color: var(--amber); color: var(--text-main); }

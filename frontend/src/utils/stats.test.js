@@ -89,6 +89,15 @@ describe('classesNeeded', () => {
     // 3 out of 4 = 75%
     expect(classesNeeded({ P: 3, A: 1, L: 0, total: 4 })).toBeLessThanOrEqual(0)
   })
+
+  it('handles custom target threshold (e.g. 80%)', () => {
+    // 3 out of 4 = 75%, below 80% target
+    expect(classesNeeded({ P: 3, A: 1, L: 0, total: 4 }, 80)).toBe(1)
+  })
+
+  it('returns 0 for stats with total 0', () => {
+    expect(classesNeeded({ P: 0, A: 0, L: 0, total: 0 })).toBe(0)
+  })
 })
 
 describe('canMiss', () => {

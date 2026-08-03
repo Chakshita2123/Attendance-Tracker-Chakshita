@@ -16,6 +16,7 @@ import AnalyticsPage       from './pages/AnalyticsPage'
 import Sidebar   from './components/layout/Sidebar'
 import MobileNav from './components/layout/MobileNav'
 import Toast     from './components/ui/Toast'
+import { checkLowAttendance, formatLowAttendanceMessage } from './utils/notifications'
 
 // ── Detect ?resetToken= in the URL on first render ────────────────────────────
 function getResetToken() {
@@ -43,10 +44,37 @@ export default function App() {
     }
   }, [dataLoading, data.phase])
 
-  // Reset initial tab flag when user logs out or changes
+  // Low-Attendance Warning — Fires once per login / session after data loads
+  const notifiedSessionRef = useRef(false)
+  useEffect(() => {
+    if (!user || dataLoading || data.phase !== 'ready') return
+
+    const userKey = user.id || user.email || 'user'
+    const sessionStorageKey = `markd_low_att_notified_${userKey}`
+    let alreadyNotifiedInStorage = false
+    try {
+      alreadyNotifiedInStorage = Boolean(sessionStorage.getItem(sessionStorageKey))
+    } catch {}
+
+    if (!notifiedSessionRef.current && !alreadyNotifiedInStorage) {
+      notifiedSessionRef.current = true
+      try {
+        sessionStorage.setItem(sessionStorageKey, 'true')
+      } catch {}
+
+      const lowSubjects = checkLowAttendance(data, currentTerm)
+      if (lowSubjects.length > 0) {
+        const msg = formatLowAttendanceMessage(lowSubjects)
+        showToast(msg, 'error', 6000)
+      }
+    }
+  }, [user, dataLoading, data, currentTerm, showToast])
+
+  // Reset initial tab & notification flags when user logs out or changes
   useEffect(() => {
     if (!user) {
       initialTabSet.current = false
+      notifiedSessionRef.current = false
     }
   }, [user])
 

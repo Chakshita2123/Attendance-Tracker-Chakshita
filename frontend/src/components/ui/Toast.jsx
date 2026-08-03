@@ -4,8 +4,8 @@ export default function Toast({ toast }) {
   const Icon = toast.type === 'success' ? CheckCircle : toast.type === 'error' ? AlertCircle : Info
   return (
     <div className={`toast ${toast.visible ? 'visible' : ''} ${toast.type}`} role="status">
-      <Icon size={15} />
-      {toast.message}
+      <Icon size={16} style={{ flexShrink: 0 }} />
+      <span>{toast.message}</span>
     </div>
   )
 }

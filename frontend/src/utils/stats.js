@@ -28,9 +28,14 @@ export const calcSubjectStats = (subjects, attendance, historicalAttendance = {}
 export const attendancePct = (stats) =>
   stats.total === 0 ? 0 : Math.round(((stats.P + stats.L) / stats.total) * 100)
 
-/** How many more classes needed to reach 75% */
-export const classesNeeded = (stats) =>
-  Math.ceil((0.75 * stats.total - (stats.P + stats.L)) / 0.25)
+/** How many more classes needed to reach target percentage (defaults to 75%) */
+export const classesNeeded = (stats, targetPct = 75) => {
+  if (!stats || stats.total === 0) return 0
+  const target = targetPct > 1 ? targetPct / 100 : targetPct
+  const present = stats.P + stats.L
+  if (present / stats.total >= target) return 0
+  return Math.max(0, Math.ceil((target * stats.total - present) / (1 - target)))
+}
 
 /** How many classes can be missed while staying at/above 75% */
 export const canMiss = (stats) =>
