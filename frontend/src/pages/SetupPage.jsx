@@ -3,6 +3,7 @@ import { Trash2, Plus, Play, CheckSquare, Clock, AlertTriangle } from 'lucide-re
 import { DAYS } from '../constants'
 import { addMinutes } from '../utils/date'
 import TermManager from '../components/terms/TermManager'
+import NumberInput from '../components/ui/NumberInput'
 
 export default function SetupPage({
   data,
@@ -178,25 +179,23 @@ export default function SetupPage({
                     <div className="historical-attendance-inputs">
                       <div className="input-wrap" style={{ marginBottom:0 }}>
                         <label className="input-label">Attended</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="input"
+                        <NumberInput
+                          min={0}
+                          fallback={0}
                           style={{ marginBottom:0, width:96, textAlign:'center' }}
                           value={existing.P || 0}
-                          onChange={e => updateHistoricalAttendance(subject, 'P', e.target.value)}
+                          onChange={val => updateHistoricalAttendance(subject, 'P', val)}
                         />
                       </div>
 
                       <div className="input-wrap" style={{ marginBottom:0 }}>
                         <label className="input-label">Total</label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="input"
+                        <NumberInput
+                          min={0}
+                          fallback={0}
                           style={{ marginBottom:0, width:96, textAlign:'center' }}
                           value={Math.max(existing.total || 0, existing.P || 0)}
-                          onChange={e => updateHistoricalAttendance(subject, 'total', e.target.value)}
+                          onChange={val => updateHistoricalAttendance(subject, 'total', val)}
                         />
                       </div>
                     </div>
@@ -216,11 +215,13 @@ export default function SetupPage({
                 <div className="text-dimmed" style={{ fontSize:11, marginTop:3 }}>Used to calculate time spent in class.</div>
               </div>
               <div className="flex-center gap-xs">
-                <input
-                  type="number" min="1" className="input"
+                <NumberInput
+                  min={1}
+                  max={720}
+                  fallback={60}
                   style={{ width:72, marginBottom:0, textAlign:'center' }}
-                  value={data.lectureSettings?.durationMinutes||60}
-                  onChange={e => setData(d => ({ ...d, lectureSettings:{ ...d.lectureSettings, durationMinutes:parseInt(e.target.value)||0 } }))}
+                  value={data.lectureSettings?.durationMinutes || 60}
+                  onChange={val => setData(d => ({ ...d, lectureSettings: { ...d.lectureSettings, durationMinutes: val } }))}
                 />
                 <Clock size={13} color="var(--text-3)"/>
                 <span className="text-dimmed" style={{ fontSize:11 }}>min</span>
@@ -233,11 +234,13 @@ export default function SetupPage({
                 <div className="text-dimmed" style={{ fontSize:11, marginTop:3 }}>Minimum attendance percentage target (triggers recovery warnings).</div>
               </div>
               <div className="flex-center gap-xs">
-                <input
-                  type="number" min="50" max="100" className="input"
+                <NumberInput
+                  min={1}
+                  max={100}
+                  fallback={75}
                   style={{ width:72, marginBottom:0, textAlign:'center' }}
                   value={data.targetThreshold ?? 75}
-                  onChange={e => setData(d => ({ ...d, targetThreshold: Math.min(100, Math.max(1, parseInt(e.target.value) || 75)) }))}
+                  onChange={val => setData(d => ({ ...d, targetThreshold: val }))}
                 />
                 <span className="text-dimmed" style={{ fontSize:11 }}>%</span>
               </div>
@@ -289,8 +292,14 @@ export default function SetupPage({
                         </div>
                         <div>
                           <label className="input-label">Duration (min)</label>
-                          <input type="number" className="input" style={{ marginBottom:0 }}
-                            value={form.duration} onChange={e=>setForm(f=>({...f,duration:e.target.value}))}/>
+                          <NumberInput
+                            min={1}
+                            max={720}
+                            fallback={data.lectureSettings?.durationMinutes || 60}
+                            style={{ marginBottom:0 }}
+                            value={form.duration}
+                            onChange={val => setForm(f => ({ ...f, duration: val }))}
+                          />
                         </div>
                       </div>
                       <div className="grid-2" style={{ gap:8 }}>

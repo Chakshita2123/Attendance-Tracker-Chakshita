@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Calculator, ArrowRight, TrendingUp, TrendingDown, CheckCircle, AlertCircle, Sparkles } from 'lucide-react'
 import TiltCard from '../effects/TiltCard'
 import AnimatedNumber from '../effects/AnimatedNumber'
+import NumberInput from '../ui/NumberInput'
 import { attendancePct, canMiss, classesNeeded } from '../../utils/stats'
 
 export default function WhatIfCalculator({ subjects, subStats, attendance, historicalAttendance }) {
@@ -165,13 +166,13 @@ export default function WhatIfCalculator({ subjects, subStats, attendance, histo
             + Attend Upcoming
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input
-              type="number"
-              min="0"
-              className="input"
+            <NumberInput
+              min={0}
+              max={365}
+              fallback={0}
               style={{ marginBottom: 0, textAlign: 'center', fontWeight: 700, borderColor: 'rgba(0, 242, 254, 0.3)' }}
               value={futureAttend}
-              onChange={(e) => setFutureAttend(e.target.value)}
+              onChange={setFutureAttend}
             />
             <span style={{ fontSize: 11, color: 'var(--text-3)' }}>classes</span>
           </div>
@@ -183,13 +184,13 @@ export default function WhatIfCalculator({ subjects, subStats, attendance, histo
             + Miss Upcoming
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input
-              type="number"
-              min="0"
-              className="input"
+            <NumberInput
+              min={0}
+              max={365}
+              fallback={0}
               style={{ marginBottom: 0, textAlign: 'center', fontWeight: 700, borderColor: 'rgba(255, 75, 110, 0.3)' }}
               value={futureMiss}
-              onChange={(e) => setFutureMiss(e.target.value)}
+              onChange={setFutureMiss}
             />
             <span style={{ fontSize: 11, color: 'var(--text-3)' }}>classes</span>
           </div>
