@@ -19,6 +19,12 @@ const attendanceSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    // Optional foreign key to Term collection
+    termId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Term',
+      default: null,
+    },
     status: {
       type: String,
       enum: ['P', 'A', 'L'],

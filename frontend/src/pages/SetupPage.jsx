@@ -1,9 +1,19 @@
 import { useState } from 'react'
-import { Trash2, Plus, Play, Clock } from 'lucide-react'
+import { Trash2, Plus, Play, CheckSquare, Clock, AlertTriangle } from 'lucide-react'
 import { DAYS } from '../constants'
 import { addMinutes } from '../utils/date'
+import TermManager from '../components/terms/TermManager'
 
-export default function SetupPage({ data, setData, setActiveTab }) {
+export default function SetupPage({
+  data,
+  setData,
+  setActiveTab,
+  terms = [],
+  currentTerm = null,
+  createTerm,
+  updateTerm,
+  deleteTerm,
+}) {
   const [subInput,  setSubInput]  = useState('')
   const [form, setForm] = useState({ day:null, subject:'', start:'09:00', duration: data.lectureSettings?.durationMinutes || 60 })
 
@@ -44,16 +54,43 @@ export default function SetupPage({ data, setData, setActiveTab }) {
   }
 
   const removeSubject = (sub) => {
+    // Warn before deleting a subject that already has tracked attendance
+    const hasTrackedAttendance = Object.values(data.attendance || {}).some(dayMarks => sub in dayMarks)
+
+    if (hasTrackedAttendance) {
+      const confirmed = window.confirm(
+        `"${sub}" has recorded attendance data that will be permanently deleted.\n\nAre you sure you want to remove it?`
+      )
+      if (!confirmed) return
+    }
+
     const tt = Object.fromEntries(DAYS.map(day => [day, (data.timetable[day]||[]).filter(c=>c.subject!==sub)]))
     setData(d => {
       const nextHistorical = { ...(d.historicalAttendance || {}) }
       delete nextHistorical[sub]
 
+      // Remove the subject's columns from tracked attendance and daily log
+      const nextAttendance = {}
+      Object.entries(d.attendance || {}).forEach(([date, dayMarks]) => {
+        const filtered = { ...dayMarks }
+        delete filtered[sub]
+        if (Object.keys(filtered).length > 0) nextAttendance[date] = filtered
+      })
+
+      const nextDailyLog = {}
+      Object.entries(d.dailyLog || {}).forEach(([date, dayMarks]) => {
+        const filtered = { ...dayMarks }
+        delete filtered[sub]
+        if (Object.keys(filtered).length > 0) nextDailyLog[date] = filtered
+      })
+
       return {
         ...d,
-        subjects:d.subjects.filter(s=>s!==sub),
-        timetable:tt,
-        historicalAttendance: nextHistorical,
+        subjects:              d.subjects.filter(s => s !== sub),
+        timetable:             tt,
+        historicalAttendance:  nextHistorical,
+        attendance:            nextAttendance,
+        dailyLog:              nextDailyLog,
       }
     })
   }
@@ -72,10 +109,20 @@ export default function SetupPage({ data, setData, setActiveTab }) {
   const removeClass = (day, id) =>
     setData(d => ({ ...d, timetable:{ ...d.timetable, [day]:d.timetable[day].filter(c=>c.id!==id) } }))
 
-  const canStart = data.subjects.length > 0
+  const isEditing  = data.phase === 'ready'   // already set up, editing existing config
+  const canStart   = data.subjects.length > 0
 
   return (
     <div className="page-animate">
+
+      {/* Academic Term Manager */}
+      <TermManager
+        terms={terms}
+        currentTerm={currentTerm}
+        createTerm={createTerm}
+        updateTerm={updateTerm}
+        deleteTerm={deleteTerm}
+      />
 
       {/* Step 1 — Subjects */}
       <div className="card mb-md">
@@ -105,9 +152,10 @@ export default function SetupPage({ data, setData, setActiveTab }) {
         </div>
       </div>
 
-      {canStart && (
+        {canStart && (
         <>
-          {/* Step 2 — Previous attendance */}
+          {/* Step 2 — Previous attendance (first-time setup only) */}
+          {!isEditing && (
           <div className="card mb-md">
             <div className="setup-step-label"><span className="step-num">2</span> PREVIOUS ATTENDANCE</div>
             <div className="text-dimmed" style={{ fontSize:11, marginBottom:14 }}>
@@ -157,10 +205,11 @@ export default function SetupPage({ data, setData, setActiveTab }) {
               })}
             </div>
           </div>
+          )} {/* end !isEditing */}
 
-          {/* Step 3 — Class settings */}
+          {/* Step 3 / 2 — Class settings */}
           <div className="card mb-md">
-            <div className="setup-step-label"><span className="step-num">3</span> CLASS SETTINGS</div>
+            <div className="setup-step-label"><span className="step-num">{isEditing ? 2 : 3}</span> CLASS SETTINGS</div>
             <div className="flex-between">
               <div>
                 <div style={{ fontFamily:'var(--font-head)', fontSize:'0.9rem', fontWeight:700 }}>Default Lecture Duration</div>
@@ -181,7 +230,7 @@ export default function SetupPage({ data, setData, setActiveTab }) {
 
           {/* Step 4 — Timetable */}
           <div className="card mb-md">
-            <div className="setup-step-label"><span className="step-num">4</span> WEEKLY TIMETABLE</div>
+            <div className="setup-step-label"><span className="step-num">{isEditing ? 3 : 4}</span> WEEKLY TIMETABLE</div>
             <div className="grid-2" style={{ gap:10 }}>
               {DAYS.map(day => (
                 <div key={day} className="day-card">
@@ -240,11 +289,26 @@ export default function SetupPage({ data, setData, setActiveTab }) {
           </div>
 
           {/* CTA */}
-          <div style={{ textAlign:'center', paddingTop:8 }}>
-            <button className="btn btn-primary btn-lg" style={{ padding:'14px 40px', fontSize:'1rem', letterSpacing:1 }}
-              onClick={() => { setData(d=>({...d,phase:'ready'})); setActiveTab('tracker') }}>
-              <Play size={18}/> START TRACKING
-            </button>
+          <div style={{ textAlign:'center', paddingTop:8, paddingBottom:8 }}>
+            {isEditing ? (
+              /* Edit mode — changes are already syncing; just go back to Tracker */
+              <button
+                className="btn btn-primary btn-lg"
+                style={{ padding:'14px 40px', fontSize:'1rem', letterSpacing:1 }}
+                onClick={() => setActiveTab('tracker')}
+              >
+                <CheckSquare size={18}/> SAVE CHANGES
+              </button>
+            ) : (
+              /* First-time setup — promote phase to 'ready' and open Tracker */
+              <button
+                className="btn btn-primary btn-lg"
+                style={{ padding:'14px 40px', fontSize:'1rem', letterSpacing:1 }}
+                onClick={() => { setData(d=>({...d,phase:'ready'})); setActiveTab('tracker') }}
+              >
+                <Play size={18}/> START TRACKING
+              </button>
+            )}
           </div>
         </>
       )}

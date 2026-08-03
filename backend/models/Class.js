@@ -15,6 +15,12 @@ const classSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // Optional foreign key to Term collection
+    termId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Term',
+      default: null,
+    },
     // Kept for backward compat; not used by current routes
     schedule: { type: String, default: null },
     teacherId: { type: String, default: null },

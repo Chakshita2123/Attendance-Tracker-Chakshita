@@ -10,11 +10,19 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-// In the unified deployment the frontend is served from the same Express origin,
-// so there are no cross-origin API calls from the browser in production.
-// We still allow all origins here to support local development (Vite dev server
-// on :5173 calling the Express dev server on :5000) and any future integrations.
-app.use(cors({ optionsSuccessStatus: 200 }));
+// Production: only allow requests from the deployed frontend origin (set via
+// FRONTEND_URL env var). In a unified Render deployment the frontend is served
+// by Express itself (same origin), so browser API calls won't need CORS at all —
+// but we still set the header correctly for any future split deployments.
+// Development: allow the Vite dev server on :5173 so local development works.
+const allowedOrigin = process.env.NODE_ENV === 'production'
+  ? (process.env.FRONTEND_URL || null)   // restrict to deployed URL in prod
+  : 'http://localhost:5173';             // Vite dev server in local dev
+
+app.use(cors({
+  origin: allowedOrigin,
+  optionsSuccessStatus: 200,
+}));
 app.use(express.json());
 
 // ── Route groups ──────────────────────────────────────────────────────────────
@@ -22,11 +30,18 @@ const classRoutes      = require('./routes/classes');
 const attendanceRoutes = require('./routes/attendance');
 const authRoutes       = require('./routes/auth');
 const dataRoutes       = require('./routes/data');
+const termRoutes       = require('./routes/terms');
+
+// ── Health check (intentionally unauthenticated — used by keep-alive ping) ────
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 app.use('/api/auth',       authRoutes);
 app.use('/api/classes',    classRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/data',       dataRoutes);
+app.use('/api/terms',      termRoutes);
 
 // ── Static frontend (production only) ─────────────────────────────────────────
 // Serves the Vite-built React app from frontend/dist when it exists.

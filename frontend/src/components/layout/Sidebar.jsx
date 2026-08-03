@@ -2,11 +2,11 @@ import { Settings, CheckSquare, BarChart2, LogOut } from 'lucide-react'
 
 const ICONS = { Setup: Settings, Tracker: CheckSquare, Analytics: BarChart2 }
 
-export default function Sidebar({ user, activeTab, setActiveTab, phase, syncStatus, onLogout, onReset }) {
+export default function Sidebar({ user, activeTab, setActiveTab, phase, syncStatus, currentTerm, onLogout, onReset }) {
   const tabs = [
-    { id:'setup',     label:'Setup',     icon:'Setup'    },
-    { id:'tracker',   label:'Tracker',   icon:'Tracker'  },
-    { id:'analytics', label:'Analytics', icon:'Analytics'},
+    { id:'setup',     label: phase === 'ready' ? 'Edit Setup' : 'Setup', icon:'Setup'    },
+    { id:'tracker',   label:'Tracker',                                    icon:'Tracker'  },
+    { id:'analytics', label:'Analytics',                                  icon:'Analytics'},
   ]
 
   const syncLabel = syncStatus === 'synced'  ? 'SYNCED'    :
@@ -41,6 +41,27 @@ export default function Sidebar({ user, activeTab, setActiveTab, phase, syncStat
 
       {/* Bottom */}
       <div className="sidebar-bottom">
+        {currentTerm && (
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--teal)',
+            background: 'rgba(0, 242, 254, 0.08)',
+            border: '1px solid rgba(0, 242, 254, 0.2)',
+            padding: '4px 8px',
+            borderRadius: 'var(--r-sm)',
+            marginBottom: 8,
+            textAlign: 'center',
+            letterSpacing: '0.04em',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            🗓️ {currentTerm.name.toUpperCase()}
+          </div>
+        )}
+
         <div className="sync-badge">
           <span className={`sync-dot ${syncStatus}`}/>
           {syncLabel}

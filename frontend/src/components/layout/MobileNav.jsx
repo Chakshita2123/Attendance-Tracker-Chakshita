@@ -4,7 +4,7 @@ const ICONS = { setup: Settings, tracker: CheckSquare, analytics: BarChart2 }
 
 export default function MobileNav({ activeTab, setActiveTab, phase }) {
   const tabs = [
-    { id:'setup',     label:'SETUP'    },
+    { id:'setup',     label: phase === 'ready' ? 'EDIT' : 'SETUP' },
     { id:'tracker',   label:'TRACKER'  },
     { id:'analytics', label:'STATS'    },
   ]

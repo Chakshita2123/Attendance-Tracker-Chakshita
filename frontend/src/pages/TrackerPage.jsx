@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RotateCcw, CheckSquare, Trash2, TrendingUp } from 'lucide-react'
+import { Calendar as CalendarIcon, RotateCcw, CheckSquare, Trash2, TrendingUp } from 'lucide-react'
 import { todayStr, weekday, lastNDays, addMinutes } from '../utils/date'
 import { calcStreak } from '../utils/stats'
 import TiltCard from '../components/effects/TiltCard'
@@ -70,7 +70,7 @@ export default function TrackerPage({ data, pushUndo, handleUndo, undoStack, sho
       {/* Stat row */}
       <div className="stat-grid mb-md">
         <TiltCard className="stat-card">
-          <div className="stat-label">TODAY'S CLASSES</div>
+          <div className="stat-label">CLASSES ({selectedDate === today ? "TODAY" : selectedDate})</div>
           <div className="stat-value"><AnimatedNumber value={classes.length}/></div>
         </TiltCard>
         <TiltCard className="stat-card">
@@ -84,19 +84,56 @@ export default function TrackerPage({ data, pushUndo, handleUndo, undoStack, sho
         </TiltCard>
       </div>
 
-      {/* Date strip */}
+      {/* Date strip + Past Date Picker */}
       <div className="card mb-md" style={{ padding:'14px 16px' }}>
-        <div className="date-strip">
-          {days.map(d => {
-            const dNum = d.slice(8)
-            const dDay = d === today ? 'TODAY' : weekday(d).toUpperCase()
-            return (
-              <button key={d} className={`date-pill ${selectedDate===d?'active':''}`} onClick={()=>setSelected(d)}>
-                <span className="date-pill-day">{dDay}</span>
-                <span className="date-pill-num">{dNum}</span>
-              </button>
-            )
-          })}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          {/* Quick-access 7-day strip */}
+          <div className="date-strip" style={{ flex: 1, minWidth: 260 }}>
+            {days.map(d => {
+              const dNum = d.slice(8)
+              const dDay = d === today ? 'TODAY' : weekday(d).toUpperCase()
+              return (
+                <button key={d} className={`date-pill ${selectedDate===d?'active':''}`} onClick={()=>setSelected(d)}>
+                  <span className="date-pill-day">{dDay}</span>
+                  <span className="date-pill-num">{dNum}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Past date calendar picker */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'var(--bg-surface)',
+            padding: '6px 12px',
+            borderRadius: 'var(--r-sm)',
+            border: '1px solid var(--border)',
+          }}>
+            <CalendarIcon size={14} color="var(--teal)" />
+            <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>JUMP TO:</span>
+            <input
+              type="date"
+              max={today}
+              value={selectedDate}
+              onChange={(e) => {
+                const val = e.target.value
+                if (val && val <= today) {
+                  setSelected(val)
+                }
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-1)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            />
+          </div>
         </div>
       </div>
 

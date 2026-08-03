@@ -3,7 +3,7 @@ import { AlertCircle, Mail } from 'lucide-react'
 import { useAurora, useNeural } from '../hooks/useBackground'
 import FloatingShapes from '../components/effects/FloatingShapes'
 
-export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn, signUp }) {
+export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn, signUp, onForgotPassword, onPrivacy, onTerms }) {
   const auroraRef = useRef(null)
   const neuralRef = useRef(null)
   useAurora(auroraRef)
@@ -86,7 +86,7 @@ export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn,
           </div>
         )}
 
-        {/* Sign In form */}
+        {/* Sign In / Sign Up form */}
         <form id="auth-form" onSubmit={handleSignIn}>
           <div className="input-wrap">
             <label className="input-label">Email</label>
@@ -95,13 +95,33 @@ export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn,
               placeholder="you@example.com" required autoComplete="email"
             />
           </div>
-          <div className="input-wrap" style={{ marginBottom: 14 }}>
+          <div className="input-wrap" style={{ marginBottom: 8 }}>
             <label className="input-label">Password</label>
             <input
               name="password" type="password" className="input"
               placeholder="••••••••••" required autoComplete="current-password"
-              minLength={6}
+              minLength={8}
             />
+          </div>
+
+          {/* Forgot password link */}
+          <div style={{ textAlign: 'right', marginBottom: 16 }}>
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--teal)',
+                fontSize: 12,
+                cursor: 'pointer',
+                padding: 0,
+                fontFamily: 'var(--font-mono)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Forgot password?
+            </button>
           </div>
 
           {/* Two separate submit buttons — one per action */}
@@ -117,8 +137,7 @@ export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn,
               type="button"
               className="btn btn-lg"
               disabled={busy}
-              onClick={async (e) => {
-                // Validate form fields, then trigger sign-up
+              onClick={async () => {
                 const form = document.getElementById('auth-form')
                 if (!form.reportValidity()) return
                 await handleSignUp({ preventDefault: () => {}, target: form })
@@ -128,7 +147,46 @@ export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn,
             </button>
           </div>
         </form>
+
+        {/* Footer links */}
+        <div style={{
+          marginTop: 24,
+          paddingTop: 16,
+          borderTop: '1px solid var(--border)',
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 20,
+        }}>
+          <FooterLink onClick={onPrivacy}>Privacy Policy</FooterLink>
+          <FooterLink onClick={onTerms}>Terms of Service</FooterLink>
+        </div>
       </div>
     </div>
+  )
+}
+
+function FooterLink({ onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: 'none',
+        border: 'none',
+        color: 'var(--text-3)',
+        fontSize: 11,
+        cursor: 'pointer',
+        padding: 0,
+        fontFamily: 'var(--font-mono)',
+        letterSpacing: '0.04em',
+        textDecoration: 'underline',
+        textDecorationColor: 'var(--border)',
+        transition: 'color 0.15s',
+      }}
+      onMouseEnter={e => e.target.style.color = 'var(--text-2)'}
+      onMouseLeave={e => e.target.style.color = 'var(--text-3)'}
+    >
+      {children}
+    </button>
   )
 }

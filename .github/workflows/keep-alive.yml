@@ -1,0 +1,49 @@
+# ── Keep Render Free Tier Alive ───────────────────────────────────────────────
+#
+# Render's free instances spin down after 15 minutes of inactivity, causing
+# a ~30–60 second cold start on the next request. This workflow pings the
+# /health endpoint every 10 minutes to prevent that.
+#
+# HOW TO ENABLE:
+# 1. Go to your GitHub repository → Settings → Secrets and variables → Actions
+# 2. Click "New repository secret"
+# 3. Name: RENDER_APP_URL
+#    Value: https://your-app-name.onrender.com   ← your actual Render URL, no trailing slash
+# 4. Save. The workflow will activate automatically on the next cron trigger.
+#
+# VERIFY IT'S WORKING:
+# • Go to Actions tab → "Keep Render Alive" → you should see runs every 10 min.
+# • Each run should show "✓ Health check passed" in the logs.
+#
+# NOTE: GitHub Actions cron schedules use UTC and may be delayed by a few minutes
+# during high-load periods. This is normal and doesn't affect functionality.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Keep Render Alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # Every 10 minutes, 24/7
+  workflow_dispatch:           # Allow manual trigger from the Actions tab
+
+jobs:
+  ping:
+    name: Ping health endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Ping /health
+        run: |
+          echo "Pinging ${{ secrets.RENDER_APP_URL }}/health …"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 30 \
+            "${{ secrets.RENDER_APP_URL }}/health")
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" -eq 200 ]; then
+            echo "✓ Health check passed"
+          else
+            echo "✗ Health check returned $STATUS — the instance may be cold-starting"
+            # Don't fail the workflow — a single missed ping is not an error.
+            # The next ping in 10 minutes will succeed once the instance is warm.
+          fi

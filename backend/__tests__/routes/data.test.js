@@ -1,15 +1,18 @@
-/**
- * Tests for GET /api/data and POST /api/data with the new relational backend.
- *
- * Mocked Prisma calls:
- *  GET /api/data  → class.findMany, attendance.findMany (with include), userData.findUnique
- *  POST /api/data → class.upsert, class.findMany (×2), attendance.upsert,
- *                   attendance.deleteMany, class.deleteMany, userData.findUnique,
- *                   userData.upsert
- */
-const mockPrisma = require('../helpers/mockPrisma');
+process.env.JWT_SECRET = 'test-secret-for-jest';
 
-jest.mock('../../db', () => mockPrisma);
+/**
+ * Tests for GET /api/data and POST /api/data.
+ *
+ * Mongoose models (Class, Attendance, UserData) are mocked via jest.mock().
+ * db.js is also mocked so no real MongoDB connection is attempted.
+ *
+ * The auth middleware is mocked to inject a fixed req.user without a real JWT.
+ */
+
+jest.mock('../../db', () => ({}));
+jest.mock('../../models/Class');
+jest.mock('../../models/Attendance');
+jest.mock('../../models/UserData');
 jest.mock('../../auth', () => ({
   requireAuth: (req, res, next) => {
     const token = req.get('authorization');
@@ -19,77 +22,88 @@ jest.mock('../../auth', () => ({
   },
 }));
 
-const request = require('supertest');
-const app = require('../../server');
+const request    = require('supertest');
+const app        = require('../../server');
+const Class      = require('../../models/Class');
+const Attendance = require('../../models/Attendance');
+const UserData   = require('../../models/UserData');
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────
 
 const USER_ID = 'user-abc';
 
-// Ordered alphabetically — matches the route's orderBy: { name: 'asc' }
 const CLASSES = [
-  { id: 1, name: 'MATH',    userId: USER_ID },
-  { id: 2, name: 'PHYSICS', userId: USER_ID },
+  { _id: { toString: () => '1' }, name: 'MATH',    userId: USER_ID },
+  { _id: { toString: () => '2' }, name: 'PHYSICS', userId: USER_ID },
 ];
 
 const ATTENDANCE_ROWS = [
   {
-    id: 1, userId: USER_ID, classId: 1,
-    date: new Date('2025-07-01T00:00:00.000Z'),
-    status: 'P',
-    class: { id: 1, name: 'MATH', userId: USER_ID },
+    date:    new Date('2025-07-01T00:00:00.000Z'),
+    status:  'P',
+    classId: {
+      _id:  { toString: () => '1' },
+      name: 'MATH',
+    },
   },
   {
-    id: 2, userId: USER_ID, classId: 2,
-    date: new Date('2025-07-01T00:00:00.000Z'),
-    status: 'A',
-    class: { id: 2, name: 'PHYSICS', userId: USER_ID },
+    date:    new Date('2025-07-01T00:00:00.000Z'),
+    status:  'A',
+    classId: {
+      _id:  { toString: () => '2' },
+      name: 'PHYSICS',
+    },
   },
 ];
 
-const USER_DATA = {
-  userId: USER_ID,
-  dataJson: JSON.stringify({
-    timetable: { Mon: [{ id: 'abc', subject: 'PHYSICS', start: '09:00', duration: 60 }] },
-    historicalAttendance: { PHYSICS: { P: 5, A: 1, L: 0, total: 6 } },
-    phase: 'ready',
-    lectureSettings: { durationMinutes: 60 },
-    dailyLog: {},
-    subjects: ['PHYSICS', 'MATH'],
-  }),
+const USER_DATA_DOC = {
   version: 3,
+  data: {
+    timetable:            { Mon: [{ id: 'abc', subject: 'PHYSICS', start: '09:00', duration: 60 }] },
+    historicalAttendance: { PHYSICS: { P: 5, A: 1, L: 0, total: 6 } },
+    phase:                'ready',
+    lectureSettings:      { durationMinutes: 60 },
+    dailyLog:             {},
+    subjects:             ['PHYSICS', 'MATH'],
+  },
 };
 
-// Convenience: set up all three mocks for a successful GET
+// ── Helpers to set up common mock chains ──────────────────────────────────────
+
+/** Mongoose sort() is called on the result of find(). We mock find() to return
+ *  an object with a sort() method that resolves to the data. */
+function mockFind(Model, data) {
+  Model.find.mockReturnValue({ sort: jest.fn().mockResolvedValue(data) });
+}
+
+/** Class.find({ userId }) used in POST for deletion check — returns array directly. */
+function mockFindDirect(Model, data) {
+  Model.find.mockResolvedValue(data);
+}
+
 function mockSuccessfulGet() {
-  mockPrisma.class.findMany.mockResolvedValue(CLASSES);
-  mockPrisma.attendance.findMany.mockResolvedValue(ATTENDANCE_ROWS);
-  mockPrisma.userData.findUnique.mockResolvedValue(USER_DATA);
+  mockFind(Class, CLASSES);
+  // Attendance.find().populate().sort()
+  Attendance.find.mockReturnValue({
+    populate: jest.fn().mockReturnValue({
+      sort: jest.fn().mockResolvedValue(ATTENDANCE_ROWS),
+    }),
+  });
+  UserData.findOne.mockResolvedValue(USER_DATA_DOC);
 }
 
-// Convenience: set up mocks for a successful POST (no deleted subjects)
-function mockSuccessfulPost() {
-  mockPrisma.class.upsert.mockResolvedValue({ id: 1, name: 'PHYSICS', userId: USER_ID });
-  mockPrisma.class.findMany
-    .mockResolvedValueOnce(CLASSES)   // first call: get existing classes
-    .mockResolvedValueOnce(CLASSES);  // second call: get current classes for classId map
-  mockPrisma.attendance.deleteMany.mockResolvedValue({ count: 0 });
-  mockPrisma.class.deleteMany.mockResolvedValue({ count: 0 });
-  mockPrisma.attendance.upsert.mockResolvedValue({});
-  mockPrisma.userData.findUnique.mockResolvedValue(USER_DATA);
-  mockPrisma.userData.upsert.mockResolvedValue({ userId: USER_ID, version: 4 });
-}
-
-// ── GET /api/data ──────────────────────────────────────────────────────────────
+// ── GET /api/data ─────────────────────────────────────────────────────────────
 
 describe('GET /api/data', () => {
+  beforeEach(() => jest.clearAllMocks());
+
   it('returns 401 when auth token is missing', async () => {
     const res = await request(app).get('/api/data');
     expect(res.status).toBe(401);
     expect(res.body.error).toBe('Missing auth token');
   });
 
-  it('assembles the full response from relational tables + config blob', async () => {
+  it('assembles the full response from relational collections + config blob', async () => {
     mockSuccessfulGet();
 
     const res = await request(app)
@@ -97,31 +111,25 @@ describe('GET /api/data', () => {
       .set('authorization', 'Bearer token');
 
     expect(res.status).toBe(200);
-
-    // subjects come from Class rows (returned in fixture order, which matches orderBy:name:asc)
     expect(res.body.subjects).toEqual(['MATH', 'PHYSICS']);
-
-    // attendance is built from Attendance rows
     expect(res.body.attendance).toEqual({
       '2025-07-01': { MATH: 'P', PHYSICS: 'A' },
     });
     expect(res.body.dailyLog).toEqual({
       '2025-07-01': { MATH: 'P', PHYSICS: 'A' },
     });
-
-    // config comes from UserData blob
     expect(res.body.phase).toBe('ready');
     expect(res.body.lectureSettings).toEqual({ durationMinutes: 60 });
     expect(res.body.historicalAttendance).toEqual({ PHYSICS: { P: 5, A: 1, L: 0, total: 6 } });
-
-    // _version is exposed for optimistic concurrency
     expect(res.body._version).toBe(3);
   });
 
   it('returns empty defaults when user has no data at all', async () => {
-    mockPrisma.class.findMany.mockResolvedValue([]);
-    mockPrisma.attendance.findMany.mockResolvedValue([]);
-    mockPrisma.userData.findUnique.mockResolvedValue(null);
+    mockFind(Class, []);
+    Attendance.find.mockReturnValue({
+      populate: jest.fn().mockReturnValue({ sort: jest.fn().mockResolvedValue([]) }),
+    });
+    UserData.findOne.mockResolvedValue(null);
 
     const res = await request(app)
       .get('/api/data')
@@ -134,25 +142,12 @@ describe('GET /api/data', () => {
     expect(res.body._version).toBe(0);
   });
 
-  it('calls Prisma with correct userId', async () => {
-    mockSuccessfulGet();
-    await request(app).get('/api/data').set('authorization', 'Bearer token');
-
-    expect(mockPrisma.class.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: USER_ID } })
-    );
-    expect(mockPrisma.attendance.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: USER_ID } })
-    );
-    expect(mockPrisma.userData.findUnique).toHaveBeenCalledWith({
-      where: { userId: USER_ID },
+  it('returns 500 when a model call throws', async () => {
+    Class.find.mockReturnValue({ sort: jest.fn().mockRejectedValue(new Error('DB error')) });
+    Attendance.find.mockReturnValue({
+      populate: jest.fn().mockReturnValue({ sort: jest.fn().mockResolvedValue([]) }),
     });
-  });
-
-  it('returns 500 when a Prisma call throws', async () => {
-    mockPrisma.class.findMany.mockRejectedValue(new Error('DB connection lost'));
-    mockPrisma.attendance.findMany.mockResolvedValue([]);
-    mockPrisma.userData.findUnique.mockResolvedValue(null);
+    UserData.findOne.mockResolvedValue(null);
 
     const res = await request(app)
       .get('/api/data')
@@ -163,7 +158,7 @@ describe('GET /api/data', () => {
   });
 });
 
-// ── POST /api/data ─────────────────────────────────────────────────────────────
+// ── POST /api/data ────────────────────────────────────────────────────────────
 
 describe('POST /api/data', () => {
   const VALID_PAYLOAD = {
@@ -175,9 +170,32 @@ describe('POST /api/data', () => {
       historicalAttendance: {},
       phase:                'ready',
       lectureSettings:      { durationMinutes: 60 },
-      _version:             3, // matches USER_DATA.version
+      _version:             3, // matches USER_DATA_DOC.version
     },
   };
+
+  function mockSuccessfulPost() {
+    // For upsert of each subject:
+    Class.findOneAndUpdate.mockResolvedValue({});
+
+    // First find: existing classes (for deletion check)
+    // Second find: current classes (for classId lookup)
+    Class.find
+      .mockResolvedValueOnce(CLASSES)
+      .mockResolvedValueOnce(CLASSES);
+
+    Attendance.deleteMany.mockResolvedValue({ deletedCount: 0 });
+    Class.deleteMany.mockResolvedValue({ deletedCount: 0 });
+    Attendance.findOneAndUpdate.mockResolvedValue({});
+    UserData.findOne.mockResolvedValue({
+      ...USER_DATA_DOC,
+      data:          {},
+      markModified:  jest.fn(),
+      save:          jest.fn().mockResolvedValue(undefined),
+    });
+  }
+
+  beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when auth token is missing', async () => {
     const res = await request(app).post('/api/data').send(VALID_PAYLOAD);
@@ -205,7 +223,7 @@ describe('POST /api/data', () => {
     expect(res.body.message).toBe('Data saved successfully');
   });
 
-  it('upserts a Class row for each subject', async () => {
+  it('upserts a Class document for each subject', async () => {
     mockSuccessfulPost();
 
     await request(app)
@@ -213,48 +231,26 @@ describe('POST /api/data', () => {
       .set('authorization', 'Bearer token')
       .send(VALID_PAYLOAD);
 
-    // One upsert per subject
-    expect(mockPrisma.class.upsert).toHaveBeenCalledTimes(2);
-    expect(mockPrisma.class.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { userId_name: { userId: USER_ID, name: 'PHYSICS' } },
-      })
-    );
-  });
-
-  it('upserts an Attendance row for each date/subject mark', async () => {
-    mockSuccessfulPost();
-
-    await request(app)
-      .post('/api/data')
-      .set('authorization', 'Bearer token')
-      .send(VALID_PAYLOAD);
-
-    expect(mockPrisma.attendance.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          userId_classId_date: expect.objectContaining({ userId: USER_ID }),
-        }),
-        create: expect.objectContaining({ status: 'P' }),
-        update: { status: 'P' },
-      })
+    // One findOneAndUpdate per subject (2 subjects)
+    expect(Class.findOneAndUpdate).toHaveBeenCalledTimes(2);
+    expect(Class.findOneAndUpdate).toHaveBeenCalledWith(
+      { userId: USER_ID, name: 'PHYSICS' },
+      expect.any(Object),
+      expect.objectContaining({ upsert: true })
     );
   });
 
   it('returns 409 Conflict when _version is stale', async () => {
-    // Server version is 3; client sends version 1 (stale)
-    mockPrisma.class.upsert.mockResolvedValue({ id: 1, name: 'PHYSICS', userId: USER_ID });
-    mockPrisma.class.findMany.mockResolvedValue(CLASSES);
-    mockPrisma.attendance.deleteMany.mockResolvedValue({ count: 0 });
-    mockPrisma.class.deleteMany.mockResolvedValue({ count: 0 });
-    mockPrisma.attendance.upsert.mockResolvedValue({});
-    mockPrisma.userData.findUnique.mockResolvedValue(USER_DATA); // version: 3
+    Class.findOneAndUpdate.mockResolvedValue({});
+    Class.find.mockResolvedValue(CLASSES);
+    Attendance.deleteMany.mockResolvedValue({ deletedCount: 0 });
+    Class.deleteMany.mockResolvedValue({ deletedCount: 0 });
+    Attendance.findOneAndUpdate.mockResolvedValue({});
+    // Server version is 3 — client sends 1 (stale)
+    UserData.findOne.mockResolvedValue({ version: 3 });
 
     const stalePayload = {
-      data: {
-        ...VALID_PAYLOAD.data,
-        _version: 1, // stale — server is at version 3
-      },
+      data: { ...VALID_PAYLOAD.data, _version: 1 },
     };
 
     const res = await request(app)
@@ -269,15 +265,14 @@ describe('POST /api/data', () => {
     expect(res.body.clientVersion).toBe(1);
   });
 
-  it('treats missing _version as 0 (backward compat) and saves successfully', async () => {
-    // Server has no UserData row yet (version = 0 implied)
-    mockPrisma.class.upsert.mockResolvedValue({ id: 1, name: 'PHYSICS', userId: USER_ID });
-    mockPrisma.class.findMany.mockResolvedValue(CLASSES);
-    mockPrisma.attendance.deleteMany.mockResolvedValue({ count: 0 });
-    mockPrisma.class.deleteMany.mockResolvedValue({ count: 0 });
-    mockPrisma.attendance.upsert.mockResolvedValue({});
-    mockPrisma.userData.findUnique.mockResolvedValue(null); // no existing row
-    mockPrisma.userData.upsert.mockResolvedValue({ userId: USER_ID, version: 1 });
+  it('creates a new UserData doc when none exists (first-time save)', async () => {
+    Class.findOneAndUpdate.mockResolvedValue({});
+    Class.find.mockResolvedValue(CLASSES);
+    Attendance.deleteMany.mockResolvedValue({ deletedCount: 0 });
+    Class.deleteMany.mockResolvedValue({ deletedCount: 0 });
+    Attendance.findOneAndUpdate.mockResolvedValue({});
+    UserData.findOne.mockResolvedValue(null);
+    UserData.create.mockResolvedValue({});
 
     const payloadWithoutVersion = {
       data: { ...VALID_PAYLOAD.data },
@@ -291,10 +286,11 @@ describe('POST /api/data', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('Data saved successfully');
+    expect(UserData.create).toHaveBeenCalled();
   });
 
-  it('returns 500 when Prisma throws', async () => {
-    mockPrisma.class.upsert.mockRejectedValue(new Error('DB error'));
+  it('returns 500 when a model call throws', async () => {
+    Class.findOneAndUpdate.mockRejectedValue(new Error('DB write failed'));
 
     const res = await request(app)
       .post('/api/data')

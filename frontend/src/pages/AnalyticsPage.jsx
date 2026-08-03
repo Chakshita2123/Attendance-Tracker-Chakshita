@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { CheckCircle, AlertCircle } from 'lucide-react'
+import { CheckCircle, AlertCircle, Trophy, AlertTriangle, Clock } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { calcSubjectStats, attendancePct, overallPct, canMiss, classesNeeded } from '../utils/stats'
 import { lastNDays } from '../utils/date'
@@ -8,9 +8,10 @@ import AnimatedNumber from '../components/effects/AnimatedNumber'
 import AnimatedRing from '../components/charts/AnimatedRing'
 import RiskMeter from '../components/charts/RiskMeter'
 import CalendarHeatmap from '../components/charts/CalendarHeatmap'
+import WhatIfCalculator from '../components/analytics/WhatIfCalculator'
 
 export default function AnalyticsPage({ data }) {
-  const { subStats, totalDays, pct, chartData } = useMemo(() => {
+  const { subStats, totalDays, pct, chartData, bestWorst } = useMemo(() => {
     const subStats   = calcSubjectStats(data.subjects, data.attendance, data.historicalAttendance)
     const totalDays  = Object.keys(data.attendance).length
     const pct        = overallPct(data.attendance, data.historicalAttendance)
@@ -24,7 +25,24 @@ export default function AnalyticsPage({ data }) {
         Absent:  vals.filter(v=>v==='A').length,
       }
     })
-    return { subStats, totalDays, pct, chartData }
+
+    // Calculate Best & Worst subjects (only for subjects with recorded data)
+    const activeSubjects = data.subjects
+      .map(sub => {
+        const stats = subStats[sub]
+        return stats && stats.total > 0 ? { sub, pct: attendancePct(stats) } : null
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.pct - a.pct)
+
+    let bestWorst = null
+    if (activeSubjects.length > 0) {
+      const best = activeSubjects[0]
+      const worst = activeSubjects.length > 1 ? activeSubjects[activeSubjects.length - 1] : null
+      bestWorst = { best, worst }
+    }
+
+    return { subStats, totalDays, pct, chartData, bestWorst }
   }, [data])
 
   const tooltipStyle = { background:'var(--bg-raised)', border:'1px solid var(--border)', fontFamily:'var(--font-mono)', fontSize:11 }
@@ -49,6 +67,52 @@ export default function AnalyticsPage({ data }) {
           <div className="stat-value"><AnimatedNumber value={data.subjects.length}/></div>
         </TiltCard>
       </div>
+
+      {/* Best / Worst Quick-Insight Banner */}
+      {bestWorst && (
+        <div
+          style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)',
+            padding: '10px 16px',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            fontSize: 12,
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--teal)' }}>
+            <Trophy size={14} />
+            <span>
+              Best: <strong style={{ color: 'var(--text-1)' }}>{bestWorst.best.sub}</strong> ({bestWorst.best.pct}%)
+            </span>
+          </div>
+
+          {bestWorst.worst && bestWorst.worst.sub !== bestWorst.best.sub && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: bestWorst.worst.pct < 75 ? 'var(--amber)' : 'var(--text-2)' }}>
+              <AlertTriangle size={14} />
+              <span>
+                Needs attention: <strong style={{ color: 'var(--text-1)' }}>{bestWorst.worst.sub}</strong> ({bestWorst.worst.pct}%)
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* What-If Prediction Calculator (Top Prominent Placement) */}
+      {data.subjects.length > 0 && (
+        <WhatIfCalculator
+          subjects={data.subjects}
+          subStats={subStats}
+          attendance={data.attendance}
+          historicalAttendance={data.historicalAttendance}
+        />
+      )}
 
       {/* Heatmap */}
       <CalendarHeatmap dailyLog={data.dailyLog || data.attendance} />
@@ -88,12 +152,32 @@ export default function AnalyticsPage({ data }) {
       {data.subjects.map(sub => {
         const stats = subStats[sub]
         if (!stats || stats.total === 0) return (
-          <div key={sub} style={{ padding:'12px 16px', background:'var(--bg-surface)', border:'1px solid var(--border)', borderRadius:'var(--r-lg)', marginBottom:10, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div
+            key={sub}
+            style={{
+              padding: '14px 18px',
+              background: 'var(--bg-surface)',
+              border: '1px dashed var(--border)',
+              borderRadius: 'var(--r-lg)',
+              marginBottom: 10,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              opacity: 0.85,
+            }}
+          >
             <div>
-              <div style={{ fontFamily:'var(--font-head)', fontSize:'1rem', fontWeight:700 }}>{sub}</div>
-              <div className="text-dimmed" style={{ fontSize:11 }}>No attendance recorded yet.</div>
+              <div style={{ fontFamily: 'var(--font-head)', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                {sub}
+                <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-3)', background: 'var(--bg-raised)', padding: '2px 6px', borderRadius: 4 }}>
+                  NOT STARTED YET
+                </span>
+              </div>
+              <div className="text-dimmed" style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Clock size={12} color="var(--text-3)" /> Mark attendance in Tracker to see stats here.
+              </div>
             </div>
-            <AnimatedRing perc={0} size={48}/>
+            <AnimatedRing perc={0} size={48} />
           </div>
         )
 

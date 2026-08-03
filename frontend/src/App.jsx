@@ -1,20 +1,31 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAuth }       from './hooks/useAuth'
 import { useAttendance } from './hooks/useAttendance'
 import { useToast }      from './hooks/useToast'
+import { useTerms }      from './hooks/useTerms'
 
-import AuthPage      from './pages/AuthPage'
-import SetupPage     from './pages/SetupPage'
-import TrackerPage   from './pages/TrackerPage'
-import AnalyticsPage from './pages/AnalyticsPage'
+import AuthPage            from './pages/AuthPage'
+import ForgotPasswordPage  from './pages/ForgotPasswordPage'
+import ResetPasswordPage   from './pages/ResetPasswordPage'
+import PrivacyPolicyPage   from './pages/PrivacyPolicyPage'
+import TermsPage           from './pages/TermsPage'
+import SetupPage           from './pages/SetupPage'
+import TrackerPage         from './pages/TrackerPage'
+import AnalyticsPage       from './pages/AnalyticsPage'
 
 import Sidebar   from './components/layout/Sidebar'
 import MobileNav from './components/layout/MobileNav'
 import Toast     from './components/ui/Toast'
 
+// ── Detect ?resetToken= in the URL on first render ────────────────────────────
+function getResetToken() {
+  return new URLSearchParams(window.location.search).get('resetToken') || null
+}
+
 export default function App() {
   const { user, loading: authLoading, authError, signUpDone, setSignUpDone, signIn, signUp, signOut } = useAuth()
   const { data, setData, syncStatus, dataLoading, resetData, setToastFn } = useAttendance(user)
+  const { terms, currentTerm, createTerm, updateTerm, deleteTerm } = useTerms(user)
   const { toast, showToast } = useToast()
 
   // Wire conflict-toast from useAttendance to the shared toast system
@@ -22,6 +33,29 @@ export default function App() {
 
   const [activeTab,  setActiveTab]  = useState('setup')
   const [undoStack,  setUndoStack]  = useState([])
+
+  // Automatically land on Tracker if setup is complete ('ready'), or Setup if incomplete
+  const initialTabSet = useRef(false)
+  useEffect(() => {
+    if (!dataLoading && !initialTabSet.current) {
+      initialTabSet.current = true
+      setActiveTab(data.phase === 'ready' ? 'tracker' : 'setup')
+    }
+  }, [dataLoading, data.phase])
+
+  // Reset initial tab flag when user logs out or changes
+  useEffect(() => {
+    if (!user) {
+      initialTabSet.current = false
+    }
+  }, [user])
+
+  // Pre-auth view: 'signin' | 'forgot-password' | 'reset-password' | 'privacy' | 'terms'
+  const [authView,   setAuthView]   = useState(() =>
+    getResetToken() ? 'reset-password' : 'signin'
+  )
+  // Capture the reset token once so it survives history.replaceState
+  const [resetToken] = useState(getResetToken)
 
   /* ── Undo ── */
   const pushUndo = useCallback((nextState) => {
@@ -58,8 +92,47 @@ export default function App() {
     )
   }
 
-  /* ── Login ── */
+  /* ── Pre-auth views ── */
   if (!user) {
+    const backToSignIn = () => setAuthView('signin')
+
+    if (authView === 'reset-password' && resetToken) {
+      return (
+        <>
+          <ResetPasswordPage token={resetToken} onDone={backToSignIn} />
+          <Toast toast={toast}/>
+        </>
+      )
+    }
+
+    if (authView === 'forgot-password') {
+      return (
+        <>
+          <ForgotPasswordPage onBack={backToSignIn} />
+          <Toast toast={toast}/>
+        </>
+      )
+    }
+
+    if (authView === 'privacy') {
+      return (
+        <>
+          <PrivacyPolicyPage onBack={backToSignIn} />
+          <Toast toast={toast}/>
+        </>
+      )
+    }
+
+    if (authView === 'terms') {
+      return (
+        <>
+          <TermsPage onBack={backToSignIn} />
+          <Toast toast={toast}/>
+        </>
+      )
+    }
+
+    // Default: sign in / sign up
     return (
       <>
         <AuthPage
@@ -68,6 +141,9 @@ export default function App() {
           setSignUpDone={setSignUpDone}
           signIn={async (e, p) => { try { await signIn(e, p) } catch {} }}
           signUp={async (e, p) => { try { await signUp(e, p) } catch {} }}
+          onForgotPassword={() => setAuthView('forgot-password')}
+          onPrivacy={() => setAuthView('privacy')}
+          onTerms={() => setAuthView('terms')}
         />
         <Toast toast={toast}/>
       </>
@@ -91,6 +167,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         phase={data.phase}
         syncStatus={syncStatus}
+        currentTerm={currentTerm}
         onLogout={signOut}
         onReset={handleReset}
       />
@@ -109,7 +186,16 @@ export default function App() {
 
         <div className="page-content">
           {activeTab === 'setup'     && (
-            <SetupPage data={data} setData={setData} setActiveTab={setActiveTab}/>
+            <SetupPage
+              data={data}
+              setData={setData}
+              setActiveTab={setActiveTab}
+              terms={terms}
+              currentTerm={currentTerm}
+              createTerm={createTerm}
+              updateTerm={updateTerm}
+              deleteTerm={deleteTerm}
+            />
           )}
           {activeTab === 'tracker'   && (
             <TrackerPage
