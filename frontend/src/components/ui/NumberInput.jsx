@@ -27,11 +27,13 @@ export default function NumberInput({
   }, [value, fallback])
 
   const handleChange = (e) => {
-    const val = e.target.value
-    setLocalVal(val)
+    const raw = e.target.value
+    // Strip non-numeric characters to prevent stray symbols on mobile keypads
+    const clean = raw.replace(/[^0-9]/g, '')
+    setLocalVal(clean)
 
-    if (val !== '' && !isNaN(val)) {
-      const num = parseInt(val, 10)
+    if (clean !== '') {
+      const num = parseInt(clean, 10)
       if (!isNaN(num)) {
         let clamped = num
         if (min !== undefined && clamped < min) clamped = min
@@ -56,9 +58,9 @@ export default function NumberInput({
   return (
     <input
       ref={inputRef}
-      type="number"
-      min={min}
-      max={max}
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
       className={className}
       style={style}
       value={localVal}

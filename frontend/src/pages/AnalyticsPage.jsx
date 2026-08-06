@@ -38,7 +38,10 @@ export default function AnalyticsPage({ data }) {
     let bestWorst = null
     if (activeSubjects.length > 0) {
       const best = activeSubjects[0]
-      const worst = activeSubjects.length > 1 ? activeSubjects[activeSubjects.length - 1] : null
+      const targetThreshold = data.targetThreshold ?? 75
+      const lowest = activeSubjects.length > 1 ? activeSubjects[activeSubjects.length - 1] : null
+      // Only highlight as 'Needs attention' if percentage is genuinely below safe threshold (<75%)
+      const worst = (lowest && lowest.pct < targetThreshold && lowest.pct < best.pct) ? lowest : null
       bestWorst = { best, worst }
     }
 

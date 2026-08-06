@@ -88,7 +88,7 @@ export default function TrackerPage({ data, pushUndo, handleUndo, undoStack, sho
       <div className="card mb-md" style={{ padding:'14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           {/* Quick-access 7-day strip */}
-          <div className="date-strip" style={{ flex: 1, minWidth: 260 }}>
+          <div className="date-strip" style={{ flex: 1, minWidth: 0, width: '100%' }}>
             {days.map(d => {
               const dNum = d.slice(8)
               const dDay = d === today ? 'TODAY' : weekday(d).toUpperCase()

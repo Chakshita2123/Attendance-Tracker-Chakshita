@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Settings, CheckSquare, BarChart2, LogOut, X } from 'lucide-react'
+import { Settings, CheckSquare, BarChart2, LogOut, User, X } from 'lucide-react'
 
-const ICONS = { setup: Settings, tracker: CheckSquare, analytics: BarChart2 }
+const ICONS = { setup: Settings, tracker: CheckSquare, analytics: BarChart2, account: User }
 
 export default function MobileNav({
   user,
@@ -19,6 +19,7 @@ export default function MobileNav({
     { id: 'setup',     label: phase === 'ready' ? 'EDIT' : 'SETUP' },
     { id: 'tracker',   label: 'TRACKER' },
     { id: 'analytics', label: 'STATS' },
+    { id: 'account',   label: 'ACCOUNT' },
   ]
 
   const initials = (user?.name || user?.email || '?')
@@ -26,6 +27,14 @@ export default function MobileNav({
 
   const syncLabel = syncStatus === 'synced' ? 'SYNCED' :
                     syncStatus === 'syncing' ? 'SYNCING…' : 'OFFLINE'
+
+  const handleTabClick = (tabId) => {
+    if (tabId === 'account') {
+      setShowProfile(true)
+    } else {
+      setActiveTab(tabId)
+    }
+  }
 
   return (
     <>
@@ -44,7 +53,7 @@ export default function MobileNav({
               padding: '2px 6px',
               borderRadius: 10,
               whiteSpace: 'nowrap',
-              maxWidth: 110,
+              maxWidth: 100,
               overflow: 'hidden',
               textOverflow: 'ellipsis'
             }}>
@@ -53,14 +62,25 @@ export default function MobileNav({
           )}
         </div>
 
-        {/* Profile / Menu avatar trigger */}
-        <button
-          className="mobile-avatar-btn"
-          onClick={() => setShowProfile(true)}
-          aria-label="User Profile & Settings"
-        >
-          <span className="mobile-avatar-initials">{initials}</span>
-        </button>
+        {/* Persistent Logout & Profile Trigger in Header */}
+        <div className="flex-center gap-xs">
+          <button
+            className="mobile-header-logout-btn"
+            onClick={onLogout}
+            title="Log Out"
+          >
+            <LogOut size={13} />
+            <span>LOG OUT</span>
+          </button>
+
+          <button
+            className="mobile-avatar-btn"
+            onClick={() => setShowProfile(true)}
+            aria-label="User Profile & Settings"
+          >
+            <span className="mobile-avatar-initials">{initials}</span>
+          </button>
+        </div>
       </header>
 
       {/* ── Profile & Actions Sheet (Modal) ── */}
@@ -127,13 +147,13 @@ export default function MobileNav({
           {tabs.map(tab => {
             const Icon = ICONS[tab.id]
             const locked = tab.id !== 'setup' && phase === 'setup'
-            const isActive = activeTab === tab.id
+            const isActive = tab.id === 'account' ? showProfile : activeTab === tab.id
             return (
               <button
                 key={tab.id}
                 className={`mob-nav-item ${isActive ? 'active' : ''}`}
                 disabled={locked}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
               >
                 <Icon size={18} />
                 <span>{tab.label}</span>

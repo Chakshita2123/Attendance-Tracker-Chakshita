@@ -35,19 +35,28 @@ export default function App() {
   const [activeTab,  setActiveTab]  = useState('setup')
   const [undoStack,  setUndoStack]  = useState([])
 
-  // Automatically land on Tracker if setup is complete ('ready'), or Setup if incomplete
-  const initialTabSet = useRef(false)
+  // Automatically land on Tracker if setup is complete ('ready' or subjects exist), or Setup if incomplete
+  const lastHandledUserRef = useRef(null)
   useEffect(() => {
-    if (!dataLoading && !initialTabSet.current) {
-      initialTabSet.current = true
-      setActiveTab(data.phase === 'ready' ? 'tracker' : 'setup')
+    if (!user) {
+      lastHandledUserRef.current = null
+      return
     }
-  }, [dataLoading, data.phase])
+
+    if (!dataLoading) {
+      const userKey = user.id || user.email
+      if (lastHandledUserRef.current !== userKey) {
+        lastHandledUserRef.current = userKey
+        const isReady = data.phase === 'ready' || (data.subjects && data.subjects.length > 0)
+        setActiveTab(isReady ? 'tracker' : 'setup')
+      }
+    }
+  }, [user, dataLoading, data.phase, data.subjects])
 
   // Low-Attendance Warning — Fires once per login / session after data loads
   const notifiedSessionRef = useRef(false)
   useEffect(() => {
-    if (!user || dataLoading || data.phase !== 'ready') return
+    if (!user || dataLoading || (data.phase !== 'ready' && (!data.subjects || data.subjects.length === 0))) return
 
     const userKey = user.id || user.email || 'user'
     const sessionStorageKey = `markd_low_att_notified_${userKey}`
@@ -70,10 +79,9 @@ export default function App() {
     }
   }, [user, dataLoading, data, currentTerm, showToast])
 
-  // Reset initial tab & notification flags when user logs out or changes
+  // Reset notification flags when user logs out
   useEffect(() => {
     if (!user) {
-      initialTabSet.current = false
       notifiedSessionRef.current = false
     }
   }, [user])

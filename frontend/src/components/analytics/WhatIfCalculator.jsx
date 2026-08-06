@@ -139,7 +139,7 @@ export default function WhatIfCalculator({ subjects, subStats, attendance, histo
       </div>
 
       {/* Controls Grid */}
-      <div className="grid-3 gap-md mb-md" style={{ alignItems: 'flex-end' }}>
+      <div className="whatif-controls-grid mb-md">
         {/* Subject Select */}
         <div className="input-wrap" style={{ marginBottom: 0 }}>
           <label className="input-label" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -147,7 +147,7 @@ export default function WhatIfCalculator({ subjects, subStats, attendance, histo
           </label>
           <select
             className="input"
-            style={{ marginBottom: 0, fontWeight: 600 }}
+            style={{ marginBottom: 0, fontWeight: 600, width: '100%' }}
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
           >
@@ -170,7 +170,7 @@ export default function WhatIfCalculator({ subjects, subStats, attendance, histo
               min={0}
               max={365}
               fallback={0}
-              style={{ marginBottom: 0, textAlign: 'center', fontWeight: 700, borderColor: 'rgba(0, 242, 254, 0.3)' }}
+              style={{ marginBottom: 0, textAlign: 'center', fontWeight: 700, borderColor: 'rgba(0, 242, 254, 0.3)', flex: 1, minWidth: 70 }}
               value={futureAttend}
               onChange={setFutureAttend}
             />
@@ -188,7 +188,7 @@ export default function WhatIfCalculator({ subjects, subStats, attendance, histo
               min={0}
               max={365}
               fallback={0}
-              style={{ marginBottom: 0, textAlign: 'center', fontWeight: 700, borderColor: 'rgba(255, 75, 110, 0.3)' }}
+              style={{ marginBottom: 0, textAlign: 'center', fontWeight: 700, borderColor: 'rgba(255, 75, 110, 0.3)', flex: 1, minWidth: 70 }}
               value={futureMiss}
               onChange={setFutureMiss}
             />
@@ -276,17 +276,21 @@ export default function WhatIfCalculator({ subjects, subStats, attendance, histo
           {newTotal === 0 ? (
             <span>Add historical baseline or attendance data to generate accurate predictions.</span>
           ) : projectedPct >= 75 ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Sparkles size={14} color="var(--teal)" />
-              With this plan, your total will be {newTotal} classes and you can still miss{' '}
-              <strong style={{ color: 'var(--text-1)' }}>{canMissAfter}</strong> more classes while staying above 75%.
-            </span>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <Sparkles size={16} color="var(--teal)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                With this plan, your total will be <strong>{newTotal}</strong> classes and you can still miss{' '}
+                <strong style={{ color: 'var(--teal)' }}>{canMissAfter}</strong> more classes while staying above 75%.
+              </div>
+            </div>
           ) : (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <AlertCircle size={14} color="var(--amber)" />
-              With this plan, your total will be {newTotal} classes and you will need to attend{' '}
-              <strong style={{ color: 'var(--text-1)' }}>{neededAfter}</strong> consecutive additional classes to reach 75%.
-            </span>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <AlertCircle size={16} color="var(--amber)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                With this plan, your total will be <strong>{newTotal}</strong> classes and you will need to attend{' '}
+                <strong style={{ color: 'var(--amber)' }}>{neededAfter}</strong> consecutive additional classes to reach 75%.
+              </div>
+            </div>
           )}
         </div>
       </div>
