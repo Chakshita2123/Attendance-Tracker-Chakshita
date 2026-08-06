@@ -149,22 +149,6 @@ export default function AuthPage({ authError, signUpDone, setSignUpDone, signIn,
           </div>
         </form>
 
-        {/* Temporary debug line for getApiBaseUrl() */}
-        <div style={{
-          marginTop: 16,
-          padding: '8px 12px',
-          background: 'rgba(255, 255, 255, 0.05)',
-          border: '1px dashed var(--teal, #00f2fe)',
-          borderRadius: 6,
-          fontSize: 11,
-          fontFamily: 'monospace',
-          color: 'var(--teal, #00f2fe)',
-          wordBreak: 'break-all',
-          textAlign: 'center'
-        }}>
-          [DEBUG] getApiBaseUrl(): &quot;{getApiBaseUrl() || '(empty)'}&quot;
-        </div>
-
         {/* Footer links */}
         <div style={{
           marginTop: 24,

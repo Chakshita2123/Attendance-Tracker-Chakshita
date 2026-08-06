@@ -201,7 +201,16 @@ export default function App() {
       />
 
       {/* ── Mobile nav ── */}
-      <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} phase={data.phase}/>
+      <MobileNav
+        user={user}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        phase={data.phase}
+        syncStatus={syncStatus}
+        currentTerm={currentTerm}
+        onLogout={signOut}
+        onReset={handleReset}
+      />
 
       {/* ── Main content ── */}
       <div className="main-wrap">

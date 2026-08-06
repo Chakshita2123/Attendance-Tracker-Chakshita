@@ -137,7 +137,7 @@ export function useAuth() {
           body: JSON.stringify({ email, password }),
         },
         () => {
-          setAuthError(`Server is waking up (Render free tier), retrying connection... — attempted URL: ${url}`)
+          setAuthError('Server is waking up (Render free tier), retrying connection...')
         }
       )
       const data = await parseResponse(response)
@@ -146,9 +146,9 @@ export function useAuth() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       if (isFetchError(msg)) {
-        setAuthError(`Server is waking up, please try again in a few seconds... — attempted URL: ${url}`)
+        setAuthError('Server is waking up, please wait a moment and try again.')
       } else {
-        setAuthError(`Failed to sign in: ${msg} — attempted URL: ${url}`)
+        setAuthError(msg || 'Failed to sign in. Please check your credentials and try again.')
       }
     }
   }
@@ -166,7 +166,7 @@ export function useAuth() {
           body: JSON.stringify({ email, password }),
         },
         () => {
-          setAuthError(`Server is waking up (Render free tier), retrying connection... — attempted URL: ${url}`)
+          setAuthError('Server is waking up (Render free tier), retrying connection...')
         }
       )
       const data = await parseResponse(response)
@@ -176,9 +176,9 @@ export function useAuth() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       if (isFetchError(msg)) {
-        setAuthError(`Server is waking up, please try again in a few seconds... — attempted URL: ${url}`)
+        setAuthError('Server is waking up, please wait a moment and try again.')
       } else {
-        setAuthError(`Failed to create account: ${msg} — attempted URL: ${url}`)
+        setAuthError(msg || 'Failed to create account. Please check your information and try again.')
       }
     }
   }

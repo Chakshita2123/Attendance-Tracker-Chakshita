@@ -17,6 +17,7 @@ export default function SetupPage({
 }) {
   const [subInput,  setSubInput]  = useState('')
   const [form, setForm] = useState({ day:null, subject:'', start:'09:00', duration: data.lectureSettings?.durationMinutes || 60 })
+  const [activeDayFilter, setActiveDayFilter] = useState('ALL')
 
   const updateHistoricalAttendance = (subject, field, value) => {
     const numericValue = Math.max(0, parseInt(value, 10) || 0)
@@ -250,8 +251,30 @@ export default function SetupPage({
           {/* Step 4 — Timetable */}
           <div className="card mb-md">
             <div className="setup-step-label"><span className="step-num">{isEditing ? 3 : 4}</span> WEEKLY TIMETABLE</div>
-            <div className="grid-2" style={{ gap:10 }}>
+            
+            {/* Day Filter Pills for focused editing */}
+            <div className="timetable-day-pills mb-sm">
+              <button
+                type="button"
+                className={`timetable-pill ${activeDayFilter === 'ALL' ? 'active' : ''}`}
+                onClick={() => setActiveDayFilter('ALL')}
+              >
+                ALL
+              </button>
               {DAYS.map(day => (
+                <button
+                  type="button"
+                  key={day}
+                  className={`timetable-pill ${activeDayFilter === day ? 'active' : ''}`}
+                  onClick={() => setActiveDayFilter(day)}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid-2" style={{ gap:10 }}>
+              {DAYS.filter(day => activeDayFilter === 'ALL' || activeDayFilter === day).map(day => (
                 <div key={day} className="day-card">
                   <div className="day-card-header">
                     <span className="day-label">{day}</span>
