@@ -35,23 +35,34 @@ export default function App() {
   const [activeTab,  setActiveTab]  = useState('setup')
   const [undoStack,  setUndoStack]  = useState([])
 
-  // Automatically land on Tracker if setup is complete ('ready' or subjects exist), or Setup if incomplete
-  const lastHandledUserRef = useRef(null)
-  useEffect(() => {
-    if (!user) {
-      lastHandledUserRef.current = null
-      return
-    }
+  const userManuallyNavigatedRef = useRef(false)
+  const landedSessionRef = useRef(null)
 
-    if (!dataLoading) {
-      const userKey = user.id || user.email
-      if (lastHandledUserRef.current !== userKey) {
-        lastHandledUserRef.current = userKey
-        const isReady = data.phase === 'ready' || (data.subjects && data.subjects.length > 0)
-        setActiveTab(isReady ? 'tracker' : 'setup')
-      }
+  const changeTab = useCallback((tabId, isManual = true) => {
+    if (isManual) {
+      userManuallyNavigatedRef.current = true
     }
-  }, [user, dataLoading, data.phase, data.subjects])
+    setActiveTab(tabId)
+  }, [])
+
+  // Automatically land on Tracker if setup is complete ('ready' or subjects exist), or Setup if incomplete
+  useEffect(() => {
+    if (!user || dataLoading) return
+
+    const isReady = data.phase === 'ready' || (data.subjects && data.subjects.length > 0)
+    const termKey = currentTerm?._id || currentTerm?.name || 'default'
+    const sessionKey = `${user.id || user.email}_${termKey}`
+
+    // If we haven't landed for this user + term session yet
+    if (landedSessionRef.current !== sessionKey) {
+      landedSessionRef.current = sessionKey
+      userManuallyNavigatedRef.current = false
+      setActiveTab(isReady ? 'tracker' : 'setup')
+    } else if (isReady && !userManuallyNavigatedRef.current) {
+      // Asynchronous data payload update (e.g. cloud sync finish)
+      setActiveTab('tracker')
+    }
+  }, [user, dataLoading, data.phase, data.subjects, currentTerm])
 
   // Low-Attendance Warning — Fires once per login / session after data loads
   const notifiedSessionRef = useRef(false)
@@ -79,9 +90,11 @@ export default function App() {
     }
   }, [user, dataLoading, data, currentTerm, showToast])
 
-  // Reset notification flags when user logs out
+  // Reset session flags when user logs out
   useEffect(() => {
     if (!user) {
+      landedSessionRef.current = null
+      userManuallyNavigatedRef.current = false
       notifiedSessionRef.current = false
     }
   }, [user])
@@ -200,7 +213,7 @@ export default function App() {
       <Sidebar
         user={user}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => changeTab(tab, true)}
         phase={data.phase}
         syncStatus={syncStatus}
         currentTerm={currentTerm}
@@ -212,7 +225,7 @@ export default function App() {
       <MobileNav
         user={user}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => changeTab(tab, true)}
         phase={data.phase}
         syncStatus={syncStatus}
         currentTerm={currentTerm}
@@ -234,7 +247,7 @@ export default function App() {
             <SetupPage
               data={data}
               setData={setData}
-              setActiveTab={setActiveTab}
+              setActiveTab={(tab) => changeTab(tab, true)}
               terms={terms}
               currentTerm={currentTerm}
               createTerm={createTerm}

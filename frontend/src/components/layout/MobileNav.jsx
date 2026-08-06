@@ -40,47 +40,27 @@ export default function MobileNav({
     <>
       {/* ── Top Mobile Header ── */}
       <header className="mobile-header">
-        <div className="flex-center gap-xs">
-          <span className="mobile-logo">MARKD //</span>
-          {currentTerm && (
-            <span style={{
-              fontSize: 9,
-              fontWeight: 700,
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--teal)',
-              background: 'rgba(0, 242, 254, 0.1)',
-              border: '1px solid rgba(0, 242, 254, 0.25)',
-              padding: '2px 6px',
-              borderRadius: 10,
-              whiteSpace: 'nowrap',
-              maxWidth: 100,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              🗓️ {currentTerm.name.toUpperCase()}
-            </span>
-          )}
-        </div>
+        <span className="mobile-logo">MARKD //</span>
 
-        {/* Persistent Logout & Profile Trigger in Header */}
-        <div className="flex-center gap-xs">
-          <button
-            className="mobile-header-logout-btn"
-            onClick={onLogout}
-            title="Log Out"
-          >
-            <LogOut size={13} />
-            <span>LOG OUT</span>
-          </button>
-
-          <button
-            className="mobile-avatar-btn"
-            onClick={() => setShowProfile(true)}
-            aria-label="User Profile & Settings"
-          >
-            <span className="mobile-avatar-initials">{initials}</span>
-          </button>
-        </div>
+        {currentTerm && (
+          <span style={{
+            fontSize: 10,
+            fontWeight: 700,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--teal)',
+            background: 'rgba(0, 242, 254, 0.08)',
+            border: '1px solid rgba(0, 242, 254, 0.22)',
+            padding: '4px 10px',
+            borderRadius: 12,
+            letterSpacing: '0.03em',
+            whiteSpace: 'nowrap',
+            maxWidth: '60%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
+            🗓️ {currentTerm.name.toUpperCase()}
+          </span>
+        )}
       </header>
 
       {/* ── Profile & Actions Sheet (Modal) ── */}
