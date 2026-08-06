@@ -15,12 +15,26 @@ const PORT = process.env.PORT || 5000;
 // by Express itself (same origin), so browser API calls won't need CORS at all —
 // but we still set the header correctly for any future split deployments.
 // Development: allow the Vite dev server on :5173 so local development works.
-const allowedOrigin = process.env.NODE_ENV === 'production'
-  ? (process.env.FRONTEND_URL || null)   // restrict to deployed URL in prod
-  : 'http://localhost:5173';             // Vite dev server in local dev
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:5000',
+  'capacitor://localhost',
+  'https://localhost',
+  'http://localhost',
+].filter(Boolean);
 
 app.use(cors({
-  origin: allowedOrigin,
+  origin: (origin, callback) => {
+    // Allow non-browser requests (mobile native, Postman, server-to-server) or matched origins
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin && origin.startsWith(o))) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   optionsSuccessStatus: 200,
 }));
 app.use(express.json());

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MARKD</string>
+    <string name="title_activity_main">MARKD</string>
+    <string name="package_name">com.markd.attendance</string>
+    <string name="custom_url_scheme">com.markd.attendance</string>
+</resources>

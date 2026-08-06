@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getApiBaseUrl } from '../utils/api'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000')
+const getBaseUrl = () => getApiBaseUrl()
+
+
 
 export function useTerms(user) {
   const [terms, setTerms] = useState([])
@@ -10,12 +13,12 @@ export function useTerms(user) {
     if (!user?.authToken) return
     setLoadingTerms(true)
     try {
-      const res = await fetch(`${API_BASE_URL}/api/terms`, {
+      const res = await fetch(`${getBaseUrl()}/api/terms`, {
         headers: { Authorization: `Bearer ${user.authToken}` },
       })
       if (res.ok) {
-        const list = await res.json()
-        setTerms(list)
+        const data = await res.json()
+        setTerms(data)
       }
     } catch (err) {
       console.error('Failed to fetch terms:', err)
@@ -28,54 +31,52 @@ export function useTerms(user) {
     fetchTerms()
   }, [fetchTerms])
 
-  const createTerm = async ({ name, startDate, endDate, isCurrent }) => {
+  const createTerm = async (termData) => {
     if (!user?.authToken) return null
     try {
-      const res = await fetch(`${API_BASE_URL}/api/terms`, {
+      const res = await fetch(`${getBaseUrl()}/api/terms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${user.authToken}`,
         },
-        body: JSON.stringify({ name, startDate, endDate, isCurrent }),
+        body: JSON.stringify(termData),
       })
-      if (res.ok) {
-        const created = await res.json()
-        await fetchTerms()
-        return created
-      }
+      if (!res.ok) throw new Error('Failed to create term')
+      const newTerm = await res.json()
+      setTerms((prev) => [newTerm, ...prev])
+      return newTerm
     } catch (err) {
-      console.error('Failed to create term:', err)
+      console.error(err)
+      throw err
     }
-    return null
   }
 
-  const updateTerm = async (id, updates) => {
+  const updateTerm = async (id, termData) => {
     if (!user?.authToken) return null
     try {
-      const res = await fetch(`${API_BASE_URL}/api/terms/${id}`, {
+      const res = await fetch(`${getBaseUrl()}/api/terms/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${user.authToken}`,
         },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(termData),
       })
-      if (res.ok) {
-        const updated = await res.json()
-        await fetchTerms()
-        return updated
-      }
+      if (!res.ok) throw new Error('Failed to update term')
+      const updated = await res.json()
+      setTerms((prev) => prev.map((t) => (t._id === id ? updated : t)))
+      return updated
     } catch (err) {
-      console.error('Failed to update term:', err)
+      console.error(err)
+      throw err
     }
-    return null
   }
 
   const deleteTerm = async (id) => {
-    if (!user?.authToken) return false
+    if (!user?.authToken) return
     try {
-      const res = await fetch(`${API_BASE_URL}/api/terms/${id}`, {
+      const res = await fetch(`${getBaseUrl()}/api/terms/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${user.authToken}` },
       })

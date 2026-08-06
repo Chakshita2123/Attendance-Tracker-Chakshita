@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { DEFAULT_DATA } from '../constants'
+import { getApiBaseUrl } from '../utils/api'
 
 const LS_KEY = 'markd_v1'
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000')
+const getBaseUrl = () => getApiBaseUrl()
+
+
 
 async function getAuthHeaders(user) {
   return user?.authToken
@@ -41,7 +44,7 @@ export function useAttendance(user) {
     const load = async () => {
       setDataLoading(true)
       try {
-        const res = await fetch(`${API_BASE_URL}/api/data`, {
+        const res = await fetch(`${getBaseUrl()}/api/data`, {
           headers: await getAuthHeaders(user),
         })
         if (!res.ok) throw new Error('Failed to load data')
@@ -91,7 +94,7 @@ export function useAttendance(user) {
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/data`, {
+        const res = await fetch(`${getBaseUrl()}/api/data`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -110,7 +113,7 @@ export function useAttendance(user) {
             'error'
           )
           // Re-fetch fresh data and update local state + version
-          const freshRes = await fetch(`${API_BASE_URL}/api/data`, {
+          const freshRes = await fetch(`${getBaseUrl()}/api/data`, {
             headers: await getAuthHeaders(user),
           })
           if (freshRes.ok) {
@@ -148,7 +151,7 @@ export function useAttendance(user) {
   const resetData = async () => {
     try {
       if (user) {
-        await fetch(`${API_BASE_URL}/api/data`, {
+        await fetch(`${getBaseUrl()}/api/data`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

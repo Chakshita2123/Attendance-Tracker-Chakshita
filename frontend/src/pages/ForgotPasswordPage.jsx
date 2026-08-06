@@ -2,8 +2,10 @@ import { useRef, useState } from 'react'
 import { Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react'
 import { useAurora, useNeural } from '../hooks/useBackground'
 import FloatingShapes from '../components/effects/FloatingShapes'
+import { getApiBaseUrl } from '../utils/api'
 
-const API = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000')
+const API = getApiBaseUrl()
+
 
 export default function ForgotPasswordPage({ onBack }) {
   const auroraRef = useRef(null)
@@ -21,7 +23,7 @@ export default function ForgotPasswordPage({ onBack }) {
     setError('')
 
     try {
-      const res = await fetch(`${API}/api/auth/forgot-password`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/forgot-password`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email: email.trim() }),

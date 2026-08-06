@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
+import { getApiBaseUrl } from '../utils/api'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:5000')
 const TOKEN_KEY = 'markd_auth_token'
+const getBaseUrl = () => getApiBaseUrl()
+
+
+
 
 function shouldForceLogin() {
   if (typeof window === 'undefined') return false
@@ -31,6 +35,28 @@ async function parseResponse(response) {
   return data
 }
 
+const isFetchError = (msg) => (
+  msg.includes('Failed to fetch') ||
+  msg.includes('NetworkError') ||
+  msg.includes('Network request failed') ||
+  msg.includes('Load failed')
+)
+
+async function executeWithRetry(url, fetchOptions, onRetryNotice) {
+  try {
+    return await fetch(url, fetchOptions)
+  } catch (firstErr) {
+    const firstMsg = firstErr instanceof Error ? firstErr.message : String(firstErr)
+    if (isFetchError(firstMsg)) {
+      if (onRetryNotice) onRetryNotice()
+      // Wait 2.5 seconds for Render server cold start spin-up
+      await new Promise((r) => setTimeout(r, 2500))
+      return await fetch(url, fetchOptions)
+    }
+    throw firstErr
+  }
+}
+
 export function useAuth() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -39,6 +65,17 @@ export function useAuth() {
 
   useEffect(() => {
     let active = true
+
+    // Light-weight background request to wake up Render instance on app launch
+    const warmUpBackend = async () => {
+      try {
+        const baseUrl = getBaseUrl()
+        if (baseUrl) {
+          fetch(`${baseUrl}/health`).catch(() => {})
+        }
+      } catch {}
+    }
+    warmUpBackend()
 
     const loadUser = async () => {
       if (shouldForceLogin()) {
@@ -58,7 +95,7 @@ export function useAuth() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        const response = await fetch(`${getBaseUrl()}/api/auth/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -90,35 +127,59 @@ export function useAuth() {
   const signIn = async (email, password) => {
     setAuthError(null)
 
+    const url = `${getBaseUrl()}/api/auth/signin`
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/signin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
+      const response = await executeWithRetry(
+        url,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        },
+        () => {
+          setAuthError(`Server is waking up (Render free tier), retrying connection... — attempted URL: ${url}`)
+        }
+      )
       const data = await parseResponse(response)
       storeToken(data.token)
       setUser({ ...data.user, authToken: data.token })
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Failed to sign in')
+      const msg = error instanceof Error ? error.message : String(error)
+      if (isFetchError(msg)) {
+        setAuthError(`Server is waking up, please try again in a few seconds... — attempted URL: ${url}`)
+      } else {
+        setAuthError(`Failed to sign in: ${msg} — attempted URL: ${url}`)
+      }
     }
   }
 
   const signUp = async (email, password) => {
     setAuthError(null)
 
+    const url = `${getBaseUrl()}/api/auth/signup`
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
+      const response = await executeWithRetry(
+        url,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        },
+        () => {
+          setAuthError(`Server is waking up (Render free tier), retrying connection... — attempted URL: ${url}`)
+        }
+      )
       const data = await parseResponse(response)
       storeToken(data.token)
       setUser({ ...data.user, authToken: data.token })
       setSignUpDone(true)
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Failed to create account')
+      const msg = error instanceof Error ? error.message : String(error)
+      if (isFetchError(msg)) {
+        setAuthError(`Server is waking up, please try again in a few seconds... — attempted URL: ${url}`)
+      } else {
+        setAuthError(`Failed to create account: ${msg} — attempted URL: ${url}`)
+      }
     }
   }
 
@@ -128,7 +189,7 @@ export function useAuth() {
 
     try {
       if (token) {
-        await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        await fetch(`${getBaseUrl()}/api/auth/logout`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,

@@ -257,13 +257,15 @@ h3 { font-size: 1rem; letter-spacing: 0.5px; }
   display: none;
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: 52px;
+  height: calc(52px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background: rgba(6,10,18,0.9);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding-left: 16px;
+  padding-right: 16px;
   z-index: 40;
 }
 .mobile-logo { font-family: var(--font-head); font-size: 1.1rem; letter-spacing: 2px; color: var(--teal); }
@@ -271,7 +273,8 @@ h3 { font-size: 1rem; letter-spacing: 0.5px; }
   display: none;
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 60px;
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: rgba(10, 16, 26, 0.95);
   backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
