@@ -4,9 +4,6 @@ import { getApiBaseUrl } from '../utils/api'
 const TOKEN_KEY = 'markd_auth_token'
 const getBaseUrl = () => getApiBaseUrl()
 
-
-
-
 function shouldForceLogin() {
   if (typeof window === 'undefined') return false
 
@@ -61,7 +58,6 @@ export function useAuth() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
-  const [signUpDone, setSignUpDone] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -82,7 +78,6 @@ export function useAuth() {
         clearToken()
         if (active) {
           setUser(null)
-          setSignUpDone(false)
           setLoading(false)
         }
         return
@@ -124,17 +119,17 @@ export function useAuth() {
     }
   }, [])
 
-  const signIn = async (email, password) => {
+  const signInWithGoogle = async (credential) => {
     setAuthError(null)
 
-    const url = `${getBaseUrl()}/api/auth/signin`
+    const url = `${getBaseUrl()}/api/auth/google`
     try {
       const response = await executeWithRetry(
         url,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ credential }),
         },
         () => {
           setAuthError('Server is waking up (Render free tier), retrying connection...')
@@ -148,37 +143,7 @@ export function useAuth() {
       if (isFetchError(msg)) {
         setAuthError('Server is waking up, please wait a moment and try again.')
       } else {
-        setAuthError(msg || 'Failed to sign in. Please check your credentials and try again.')
-      }
-    }
-  }
-
-  const signUp = async (email, password) => {
-    setAuthError(null)
-
-    const url = `${getBaseUrl()}/api/auth/signup`
-    try {
-      const response = await executeWithRetry(
-        url,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        },
-        () => {
-          setAuthError('Server is waking up (Render free tier), retrying connection...')
-        }
-      )
-      const data = await parseResponse(response)
-      storeToken(data.token)
-      setUser({ ...data.user, authToken: data.token })
-      setSignUpDone(true)
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error)
-      if (isFetchError(msg)) {
-        setAuthError('Server is waking up, please wait a moment and try again.')
-      } else {
-        setAuthError(msg || 'Failed to create account. Please check your information and try again.')
+        setAuthError(msg || 'Google sign-in failed. Please try again.')
       }
     }
   }
@@ -199,13 +164,11 @@ export function useAuth() {
     } finally {
       clearToken()
       setUser(null)
-      setSignUpDone(false)
     }
   }
 
   return {
     user, loading, authError, setAuthError,
-    signUpDone, setSignUpDone,
-    signIn, signUp, signOut,
+    signInWithGoogle, signOut,
   }
 }

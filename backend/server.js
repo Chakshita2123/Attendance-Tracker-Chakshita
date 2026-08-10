@@ -47,7 +47,7 @@ const dataRoutes       = require('./routes/data');
 const termRoutes       = require('./routes/terms');
 
 // ── Health check (intentionally unauthenticated — used by keep-alive ping) ────
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 

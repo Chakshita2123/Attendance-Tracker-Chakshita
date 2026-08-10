@@ -9,15 +9,19 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    passwordHash: {
+    googleId: {
       type: String,
-      required: true,
+      unique: true,
+      sparse: true,
     },
-    // Password-reset fields — null when no reset is pending.
-    // The token stored here is a SHA-256 hash of the raw token sent in the email,
-    // so a stolen DB dump can't be used to reset passwords directly.
-    passwordResetToken:  { type: String, default: null },
-    passwordResetExpiry: { type: Date,   default: null },
+    name: {
+      type: String,
+      default: '',
+    },
+    picture: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );

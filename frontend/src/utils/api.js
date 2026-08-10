@@ -19,15 +19,17 @@ export function getApiBaseUrl() {
 
   const isMobileApp = isNative || platform !== 'web' || isCapacitorOrigin
 
-  const url = isMobileApp
+  const rawUrl = isMobileApp
     ? PRODUCTION_API_URL
     : (import.meta.env.VITE_API_BASE_URL ??
        import.meta.env.VITE_API_URL ??
        (import.meta.env.PROD ? '' : 'http://localhost:5000'))
 
-  console.log(`[API_BASE_URL] Platform: ${platform}, isNative: ${isNative}, isMobileApp: ${isMobileApp}, Resolved URL: "${url}"`)
+  const cleanUrl = String(rawUrl || '').replace(/\/+$/, '').replace(/\/api$/, '')
 
-  return url
+  console.log(`[API_BASE_URL] Platform: ${platform}, isNative: ${isNative}, isMobileApp: ${isMobileApp}, Resolved URL: "${cleanUrl}"`)
+
+  return cleanUrl
 }
 
 

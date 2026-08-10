@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 // ── JWT ──────────────────────────────────────────────────────────────────────
@@ -12,29 +11,10 @@ if (!JWT_SECRET) {
   console.warn('[auth] WARNING: JWT_SECRET is not set in environment variables');
 }
 
-// ── Password hashing ─────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
-}
-
-function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
-  const derivedKey = crypto.scryptSync(password, salt, 64).toString('hex');
-  return `${salt}:${derivedKey}`;
-}
-
-function verifyPassword(password, storedHash) {
-  if (!storedHash || !storedHash.includes(':')) return false;
-
-  const [salt, originalHash] = storedHash.split(':');
-  const derivedKey = crypto.scryptSync(password, salt, 64).toString('hex');
-  const originalBuffer = Buffer.from(originalHash, 'hex');
-  const candidateBuffer = Buffer.from(derivedKey, 'hex');
-
-  return (
-    originalBuffer.length === candidateBuffer.length &&
-    crypto.timingSafeEqual(originalBuffer, candidateBuffer)
-  );
 }
 
 // ── Token creation (replaces createSession) ──────────────────────────────────
@@ -88,9 +68,8 @@ function requireAuth(req, res, next) {
 
 module.exports = {
   createToken,
-  hashPassword,
   normalizeEmail,
   readBearerToken,
   requireAuth,
-  verifyPassword,
 };
+
