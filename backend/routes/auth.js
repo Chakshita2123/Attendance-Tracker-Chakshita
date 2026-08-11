@@ -27,15 +27,19 @@ router.post('/google', async (req, res) => {
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) {
+  const androidClientId = process.env.GOOGLE_ANDROID_CLIENT_ID;
+
+  if (!clientId && !androidClientId) {
     return res.status(500).json({ error: 'Server misconfiguration: GOOGLE_CLIENT_ID not configured' });
   }
 
+  const audiences = [clientId, androidClientId].filter(Boolean);
+
   try {
-    const client = new OAuth2Client(clientId);
+    const client = new OAuth2Client(clientId || androidClientId);
     const ticket = await client.verifyIdToken({
       idToken: credential,
-      audience: clientId,
+      audience: audiences.length === 1 ? audiences[0] : audiences,
     });
 
     const payload = ticket.getPayload();

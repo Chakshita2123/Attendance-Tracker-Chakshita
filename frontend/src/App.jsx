@@ -17,7 +17,7 @@ import Toast     from './components/ui/Toast'
 import { checkLowAttendance, formatLowAttendanceMessage } from './utils/notifications'
 
 export default function App() {
-  const { user, loading: authLoading, authError, signInWithGoogle, signOut } = useAuth()
+  const { user, loading: authLoading, authError, signInWithGoogle, signInWithGoogleNative, signOut } = useAuth()
   const { data, setData, syncStatus, dataLoading, resetData, setToastFn } = useAttendance(user)
   const { terms, currentTerm, createTerm, updateTerm, deleteTerm } = useTerms(user)
   const { toast, showToast } = useToast()
@@ -158,6 +158,7 @@ export default function App() {
         <AuthPage
           authError={authError}
           signInWithGoogle={signInWithGoogle}
+          signInWithGoogleNative={signInWithGoogleNative}
           onPrivacy={() => setAuthView('privacy')}
           onTerms={() => setAuthView('terms')}
         />

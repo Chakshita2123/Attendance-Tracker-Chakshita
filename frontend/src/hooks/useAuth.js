@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { SocialLogin } from '@capgo/capacitor-social-login'
 import { getApiBaseUrl } from '../utils/api'
 
 const TOKEN_KEY = 'markd_auth_token'
@@ -58,6 +60,21 @@ export function useAuth() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+      if (clientId) {
+        SocialLogin.initialize({
+          google: {
+            webClientId: clientId,
+          },
+        }).catch((err) => {
+          console.warn('Native Google Auth init warning:', err)
+        })
+      }
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -148,6 +165,24 @@ export function useAuth() {
     }
   }
 
+  const signInWithGoogleNative = async () => {
+    setAuthError(null)
+    try {
+      const res = await SocialLogin.login({ provider: 'google' })
+      const idToken = res?.result?.idToken || res?.idToken
+      if (!idToken) {
+        throw new Error('No ID token returned from Google Sign-In')
+      }
+      await signInWithGoogle(idToken)
+    } catch (error) {
+      console.error('Native Google Sign-In error:', error)
+      const msg = error instanceof Error ? error.message : String(error)
+      if (!msg.toLowerCase().includes('cancel') && !msg.toLowerCase().includes('closed') && !msg.toLowerCase().includes('dismiss')) {
+        setAuthError(msg || 'Google sign-in failed.')
+      }
+    }
+  }
+
   const signOut = async () => {
     setAuthError(null)
     const token = getStoredToken()
@@ -169,6 +204,6 @@ export function useAuth() {
 
   return {
     user, loading, authError, setAuthError,
-    signInWithGoogle, signOut,
+    signInWithGoogle, signInWithGoogleNative, signOut,
   }
 }
