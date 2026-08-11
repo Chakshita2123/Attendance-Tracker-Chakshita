@@ -623,12 +623,23 @@ input[type="number"].input::-webkit-inner-spin-button { -webkit-appearance: none
   transition: opacity 0.25s, transform 0.25s;
   z-index: 9999;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  max-width: calc(100vw - 32px);
+  width: max-content;
+  box-sizing: border-box;
+  line-height: 1.4;
 }
 .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.success { border-color: rgba(34,211,165,0.4); color: var(--teal); }
 .toast.error   { border-color: rgba(248,113,113,0.4); color: var(--red); }
 .toast.info    { border-color: rgba(56,189,248,0.3);  color: var(--blue); }
+
+@media (max-width: 768px) {
+  .toast {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
 
 /* ── 15. Auth / Login Page ── */
 .auth-screen {
@@ -1043,7 +1054,7 @@ input[type="number"].input::-webkit-inner-spin-button { -webkit-appearance: none
   white-space: nowrap;
 }
 .heatmap-grid { display: flex; gap: 3px; padding-bottom: 4px; }
-.heatmap-col  { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+.heatmap-col  { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; min-width: 13px; }
 .heatmap-cell {
   width: 13px; height: 13px;
   border-radius: 2px;

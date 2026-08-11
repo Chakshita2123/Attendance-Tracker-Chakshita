@@ -5,11 +5,14 @@ import { todayStr } from '../../utils/date'
 export default function CalendarHeatmap({ dailyLog }) {
   const scrollRef = useRef(null)
 
+  const hasScrolledRef = useRef(false)
+
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && gridCols.length > 0 && !hasScrolledRef.current) {
       scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
+      hasScrolledRef.current = true
     }
-  }, []) // Empty dependency array: fires only once on initial mount
+  }, [gridCols])
 
   const { gridCols, months } = useMemo(() => {
     const endStr  = todayStr()
