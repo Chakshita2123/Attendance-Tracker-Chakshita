@@ -21,6 +21,13 @@ const classSchema = new mongoose.Schema(
       ref: 'Term',
       default: null,
     },
+    // Starting balance manually entered for past lectures
+    manualStats: {
+      delivered: { type: Number, default: 0, min: 0 },
+      attended:  { type: Number, default: 0, min: 0 },
+      dl:        { type: Number, default: 0, min: 0 },
+      ml:        { type: Number, default: 0, min: 0 },
+    },
     // Kept for backward compat; not used by current routes
     schedule: { type: String, default: null },
     teacherId: { type: String, default: null },

@@ -46,6 +46,17 @@ async function assembleUserData(userId) {
   // subjects: deduplicated list of subject names from Class documents
   const subjects = classes.map(c => c.name);
 
+  // manualStats: map of subjectName -> { delivered, attended, dl, ml } directly from Class documents
+  const manualStats = {};
+  classes.forEach(c => {
+    manualStats[c.name] = {
+      delivered: c.manualStats?.delivered || 0,
+      attended:  c.manualStats?.attended  || 0,
+      dl:        c.manualStats?.dl        || 0,
+      ml:        c.manualStats?.ml        || 0,
+    };
+  });
+
   // Build classId (ObjectId string) → name lookup for attendance assembly
   const classNameById = Object.fromEntries(classes.map(c => [c._id.toString(), c.name]));
 
@@ -73,6 +84,7 @@ async function assembleUserData(userId) {
     attendance,
     dailyLog,
     historicalAttendance: config.historicalAttendance || {},
+    manualStats:          Object.keys(manualStats).length > 0 ? manualStats : (config.manualStats || {}),
     phase:                config.phase                || 'setup',
     lectureSettings:      config.lectureSettings      || DEFAULT_LECTURE_SETTINGS,
     _version:             userData?.version           ?? 0,
@@ -116,6 +128,7 @@ router.post('/', requireAuth, async (req, res) => {
     attendance          = {},
     timetable           = DEFAULT_TIMETABLE,
     historicalAttendance = {},
+    manualStats         = {},
     phase               = 'setup',
     lectureSettings     = DEFAULT_LECTURE_SETTINGS,
     dailyLog            = {},
@@ -125,9 +138,20 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     // ── 1. Upsert Class documents for every subject ───────────────────────────
     for (const name of subjects) {
+      const ms = manualStats[name] || {};
+      const statsObj = {
+        delivered: Math.max(0, parseInt(ms.delivered, 10) || 0),
+        attended:  Math.max(0, parseInt(ms.attended, 10) || 0),
+        dl:        Math.max(0, parseInt(ms.dl, 10) || 0),
+        ml:        Math.max(0, parseInt(ms.ml, 10) || 0),
+      };
+
       await Class.findOneAndUpdate(
         { userId, name },
-        { $setOnInsert: { userId, name } },
+        {
+          $setOnInsert: { userId, name },
+          $set: { manualStats: statsObj },
+        },
         { upsert: true, new: true }
       );
     }
@@ -182,6 +206,7 @@ router.post('/', requireAuth, async (req, res) => {
     const configBlob = {
       timetable,
       historicalAttendance,
+      manualStats,
       phase,
       lectureSettings,
       dailyLog,

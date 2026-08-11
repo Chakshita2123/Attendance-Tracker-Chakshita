@@ -809,6 +809,29 @@ input[type="number"].input::-webkit-inner-spin-button { -webkit-appearance: none
   flex-wrap: wrap;
 }
 
+.starting-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .starting-balance-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 12px;
+  }
+  .starting-balance-grid .input-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .starting-balance-grid .input-label {
+    white-space: nowrap;
+    text-align: center;
+  }
+}
+
 /* ── 18. Tracker Page ── */
 .mobile-header-logout-btn {
   display: flex;
@@ -977,10 +1000,50 @@ input[type="number"].input::-webkit-inner-spin-button { -webkit-appearance: none
 .banner-mid  { background: rgba(245,158,11,.08);  border: 1px solid rgba(245,158,11,.25);  color: var(--amber); }
 
 /* Heatmap */
-.heatmap-outer { overflow-x: auto; scrollbar-width: none; }
+.heatmap-container {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  width: 100%;
+}
+.heatmap-days {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+  padding-right: 4px;
+}
+.heatmap-day-spacer {
+  height: 18px;
+}
+.heatmap-outer {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  width: 100%;
+}
 .heatmap-outer::-webkit-scrollbar { display: none; }
+.heatmap-inner {
+  position: relative;
+  padding-top: 18px;
+  width: max-content;
+}
+.heatmap-months-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 18px;
+}
+.heatmap-month-label {
+  position: absolute;
+  top: 0;
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
 .heatmap-grid { display: flex; gap: 3px; padding-bottom: 4px; }
-.heatmap-col  { display: flex; flex-direction: column; gap: 3px; }
+.heatmap-col  { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
 .heatmap-cell {
   width: 13px; height: 13px;
   border-radius: 2px;
@@ -989,6 +1052,7 @@ input[type="number"].input::-webkit-inner-spin-button { -webkit-appearance: none
   cursor: default;
   transition: transform 0.1s;
   position: relative;
+  flex-shrink: 0;
 }
 .heatmap-cell:hover { transform: scale(1.4); z-index: 2; }
 .heatmap-cell .htip {

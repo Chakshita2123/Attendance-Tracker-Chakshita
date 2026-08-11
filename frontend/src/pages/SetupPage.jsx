@@ -71,6 +71,9 @@ export default function SetupPage({
       const nextHistorical = { ...(d.historicalAttendance || {}) }
       delete nextHistorical[sub]
 
+      const nextManualStats = { ...(d.manualStats || {}) }
+      delete nextManualStats[sub]
+
       // Remove the subject's columns from tracked attendance and daily log
       const nextAttendance = {}
       Object.entries(d.attendance || {}).forEach(([date, dayMarks]) => {
@@ -91,8 +94,26 @@ export default function SetupPage({
         subjects:              d.subjects.filter(s => s !== sub),
         timetable:             tt,
         historicalAttendance:  nextHistorical,
+        manualStats:           nextManualStats,
         attendance:            nextAttendance,
         dailyLog:              nextDailyLog,
+      }
+    })
+  }
+
+  const updateManualStats = (subject, field, value) => {
+    const numericValue = Math.max(0, parseInt(value, 10) || 0)
+
+    setData(current => {
+      const currentEntry = current.manualStats?.[subject] || { delivered: 0, attended: 0, dl: 0, ml: 0 }
+      const nextEntry = { ...currentEntry, [field]: numericValue }
+
+      return {
+        ...current,
+        manualStats: {
+          ...(current.manualStats || {}),
+          [subject]: nextEntry,
+        },
       }
     })
   }
@@ -156,47 +177,69 @@ export default function SetupPage({
 
         {canStart && (
         <>
-          {/* Step 2 — Previous attendance (first-time setup only) */}
-          {!isEditing && (
+          {/* Step 2 — Starting Balance (Portal Imports) */}
           <div className="card mb-md">
-            <div className="setup-step-label"><span className="step-num">2</span> PREVIOUS ATTENDANCE</div>
+            <div className="setup-step-label"><span className="step-num">2</span> STARTING BALANCE (PORTAL IMPORT)</div>
             <div className="text-dimmed" style={{ fontSize:11, marginBottom:14 }}>
-              Add the classes you already completed before using the tracker. New entries you mark later will continue from these totals.
+              Enter lectures completed before using the tracker (e.g. copied from your college portal).
+              Day-to-day marked attendance will add on top of these baseline counts.
             </div>
 
             <div className="historical-attendance-list">
               {data.subjects.map(subject => {
-                const existing = data.historicalAttendance?.[subject] || { P: 0, total: 0 }
+                const ms = data.manualStats?.[subject] || { delivered: 0, attended: 0, dl: 0, ml: 0 }
 
                 return (
-                  <div key={subject} className="historical-attendance-row">
+                  <div key={subject} className="historical-attendance-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
                     <div className="historical-attendance-subject">
-                      <div className="historical-attendance-name">{subject}</div>
+                      <div className="historical-attendance-name" style={{ fontSize: '0.95rem', fontWeight: 700 }}>{subject}</div>
                       <div className="text-dimmed" style={{ fontSize:11 }}>
-                        {Math.max(0, (existing.total || 0) - (existing.P || 0))} missed so far
+                        Effective Attended: {(ms.attended || 0) + (ms.dl || 0) + (ms.ml || 0)} / {ms.delivered || 0} Delivered
                       </div>
                     </div>
 
-                    <div className="historical-attendance-inputs">
+                    <div className="starting-balance-grid">
+                      <div className="input-wrap" style={{ marginBottom:0 }}>
+                        <label className="input-label">Delivered</label>
+                        <NumberInput
+                          min={0}
+                          fallback={0}
+                          style={{ marginBottom:0, textAlign:'center' }}
+                          value={ms.delivered || 0}
+                          onChange={val => updateManualStats(subject, 'delivered', val)}
+                        />
+                      </div>
+
                       <div className="input-wrap" style={{ marginBottom:0 }}>
                         <label className="input-label">Attended</label>
                         <NumberInput
                           min={0}
                           fallback={0}
-                          style={{ marginBottom:0, width:96, textAlign:'center' }}
-                          value={existing.P || 0}
-                          onChange={val => updateHistoricalAttendance(subject, 'P', val)}
+                          style={{ marginBottom:0, textAlign:'center' }}
+                          value={ms.attended || 0}
+                          onChange={val => updateManualStats(subject, 'attended', val)}
                         />
                       </div>
 
                       <div className="input-wrap" style={{ marginBottom:0 }}>
-                        <label className="input-label">Total</label>
+                        <label className="input-label">DL (Duty Leave)</label>
                         <NumberInput
                           min={0}
                           fallback={0}
-                          style={{ marginBottom:0, width:96, textAlign:'center' }}
-                          value={Math.max(existing.total || 0, existing.P || 0)}
-                          onChange={val => updateHistoricalAttendance(subject, 'total', val)}
+                          style={{ marginBottom:0, textAlign:'center' }}
+                          value={ms.dl || 0}
+                          onChange={val => updateManualStats(subject, 'dl', val)}
+                        />
+                      </div>
+
+                      <div className="input-wrap" style={{ marginBottom:0 }}>
+                        <label className="input-label">ML (Medical Leave)</label>
+                        <NumberInput
+                          min={0}
+                          fallback={0}
+                          style={{ marginBottom:0, textAlign:'center' }}
+                          value={ms.ml || 0}
+                          onChange={val => updateManualStats(subject, 'ml', val)}
                         />
                       </div>
                     </div>
@@ -205,7 +248,6 @@ export default function SetupPage({
               })}
             </div>
           </div>
-          )} {/* end !isEditing */}
 
           {/* Step 3 / 2 — Class settings */}
           <div className="card mb-md">

@@ -32,7 +32,7 @@ export function checkLowAttendance(data, currentTerm = null) {
     attendanceToUse = filtered
   }
 
-  const subStats = calcSubjectStats(data.subjects, attendanceToUse, data.historicalAttendance)
+  const subStats = calcSubjectStats(data.subjects, attendanceToUse, data.historicalAttendance, data.manualStats)
 
   const lowSubjects = []
 

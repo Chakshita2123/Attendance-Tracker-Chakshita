@@ -1,4 +1,13 @@
-const emptyStats = () => ({ P: 0, A: 0, L: 0, total: 0 })
+const emptyStats = () => ({
+  P: 0,
+  A: 0,
+  L: 0,
+  total: 0,
+  manualDelivered: 0,
+  manualAttended: 0,
+  manualDL: 0,
+  manualML: 0,
+})
 
 const normalizeHistoricalEntry = (entry = {}) => {
   const P = Math.max(0, Number(entry.P) || 0)
@@ -8,12 +17,32 @@ const normalizeHistoricalEntry = (entry = {}) => {
   return { P, A, L, total }
 }
 
-/** Per-subject stats from tracked attendance plus any historical baseline */
-export const calcSubjectStats = (subjects, attendance, historicalAttendance = {}) => {
+const normalizeManualEntry = (entry = {}) => {
+  const delivered = Math.max(0, Number(entry.delivered) || 0)
+  const attended  = Math.max(0, Number(entry.attended)  || 0)
+  const dl        = Math.max(0, Number(entry.dl)        || 0)
+  const ml        = Math.max(0, Number(entry.ml)        || 0)
+  return { delivered, attended, dl, ml }
+}
+
+/** Per-subject stats from tracked attendance plus any historical baseline and manual starting balance */
+export const calcSubjectStats = (subjects, attendance, historicalAttendance = {}, manualStats = {}) => {
   const stats = Object.fromEntries(subjects.map(s => [s, emptyStats()]))
 
   subjects.forEach(subject => {
-    stats[subject] = normalizeHistoricalEntry(historicalAttendance[subject])
+    const hist   = normalizeHistoricalEntry(historicalAttendance[subject])
+    const manual = normalizeManualEntry(manualStats[subject])
+
+    stats[subject] = {
+      P: hist.P + manual.attended + manual.dl + manual.ml, // DL and ML count as present equivalent
+      A: hist.A,
+      L: hist.L,
+      total: hist.total + manual.delivered, // Total delivered lectures
+      manualDelivered: manual.delivered,
+      manualAttended: manual.attended,
+      manualDL: manual.dl,
+      manualML: manual.ml,
+    }
   })
 
   Object.values(attendance).forEach(day => {
@@ -42,7 +71,7 @@ export const canMiss = (stats) =>
   Math.max(0, Math.floor((stats.P + stats.L) / 0.75) - stats.total)
 
 /** Overall % across all subjects */
-export const overallPct = (attendance, historicalAttendance = {}) => {
+export const overallPct = (attendance, historicalAttendance = {}, manualStats = {}) => {
   let total = 0
   let present = 0
 
@@ -50,6 +79,12 @@ export const overallPct = (attendance, historicalAttendance = {}) => {
     const normalized = normalizeHistoricalEntry(entry)
     total += normalized.total
     present += normalized.P + normalized.L
+  })
+
+  Object.values(manualStats).forEach(entry => {
+    const manual = normalizeManualEntry(entry)
+    total += manual.delivered
+    present += manual.attended + manual.dl + manual.ml
   })
 
   Object.values(attendance).forEach(day => {

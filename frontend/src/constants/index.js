@@ -6,6 +6,7 @@ export const DEFAULT_DATA = {
   attendance: {},
   dailyLog: {},
   historicalAttendance: {},
+  manualStats: {},
   phase: 'setup',
   lectureSettings: { durationMinutes: 60 },
 }

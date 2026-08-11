@@ -61,6 +61,7 @@ export function useAttendance(user) {
             attendance:           remote.attendance            || {},
             dailyLog:             remote.dailyLog              || remote.daily_log || {},
             historicalAttendance: remote.historicalAttendance  || remote.historical_attendance || {},
+            manualStats:          remote.manualStats          || {},
             phase:                remote.phase                 || 'setup',
             lectureSettings:      remote.lectureSettings       || remote.lecture_settings || DEFAULT_DATA.lectureSettings,
           })

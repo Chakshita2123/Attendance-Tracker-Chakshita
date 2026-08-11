@@ -12,9 +12,9 @@ import WhatIfCalculator from '../components/analytics/WhatIfCalculator'
 
 export default function AnalyticsPage({ data }) {
   const { subStats, totalDays, pct, chartData, bestWorst } = useMemo(() => {
-    const subStats   = calcSubjectStats(data.subjects, data.attendance, data.historicalAttendance)
+    const subStats   = calcSubjectStats(data.subjects, data.attendance, data.historicalAttendance, data.manualStats)
     const totalDays  = Object.keys(data.attendance).length
-    const pct        = overallPct(data.attendance, data.historicalAttendance)
+    const pct        = overallPct(data.attendance, data.historicalAttendance, data.manualStats)
     const chartData  = lastNDays(7).reverse().map(d => {
       const rec = data.attendance[d] || {}
       const vals = Object.values(rec)

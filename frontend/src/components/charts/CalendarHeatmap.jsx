@@ -1,8 +1,16 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import TiltCard from '../effects/TiltCard'
 import { todayStr } from '../../utils/date'
 
 export default function CalendarHeatmap({ dailyLog }) {
+  const scrollRef = useRef(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
+    }
+  }, []) // Empty dependency array: fires only once on initial mount
+
   const { gridCols, months } = useMemo(() => {
     const endStr  = todayStr()
     const endDate = new Date(endStr)
@@ -54,29 +62,34 @@ export default function CalendarHeatmap({ dailyLog }) {
   return (
     <TiltCard className="card mb-md">
       <div className="card-title"><span className="card-title-icon">◫</span> ATTENDANCE CALENDAR</div>
-      <div style={{ position:'relative', paddingLeft:18, paddingTop:20 }}>
-        {/* Month labels */}
-        {months.map((m,i) => (
-          <div key={i} style={{ position:'absolute',top:0,left:18+m.col*16,fontSize:9,color:'var(--text-3)',letterSpacing:1 }}>
-            {m.label.toUpperCase()}
-          </div>
-        ))}
-        {/* Day labels */}
-        <div style={{ position:'absolute',top:20,left:0,display:'flex',flexDirection:'column',gap:3 }}>
+      <div className="heatmap-container">
+        {/* Fixed Day labels */}
+        <div className="heatmap-days">
+          <div className="heatmap-day-spacer" />
           {dayLabels.map((d,i) => <div key={i} className="hm-day-label">{d}</div>)}
         </div>
-        {/* Grid */}
-        <div className="heatmap-outer">
-          <div className="heatmap-grid">
-            {gridCols.map((col, ci) => (
-              <div key={ci} className="heatmap-col">
-                {col.map(cell => (
-                  <div key={cell.date} className="heatmap-cell" style={{ background:cell.bg, boxShadow:cell.glow }}>
-                    <div className="htip">{cell.date} · {cell.val}</div>
-                  </div>
-                ))}
-              </div>
-            ))}
+
+        {/* Scrollable Month labels + Grid */}
+        <div className="heatmap-outer" ref={scrollRef}>
+          <div className="heatmap-inner">
+            <div className="heatmap-months-row">
+              {months.map((m,i) => (
+                <div key={i} className="heatmap-month-label" style={{ left: m.col * 16 }}>
+                  {m.label.toUpperCase()}
+                </div>
+              ))}
+            </div>
+            <div className="heatmap-grid">
+              {gridCols.map((col, ci) => (
+                <div key={ci} className="heatmap-col">
+                  {col.map(cell => (
+                    <div key={cell.date} className="heatmap-cell" style={{ background:cell.bg, boxShadow:cell.glow }}>
+                      <div className="htip">{cell.date} · {cell.val}</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

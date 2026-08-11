@@ -11,10 +11,8 @@ import {
 describe('calcSubjectStats', () => {
   it('returns zero stats when attendance is empty', () => {
     const stats = calcSubjectStats(['Math', 'Physics'], {})
-    expect(stats).toEqual({
-      Math: { P: 0, A: 0, L: 0, total: 0 },
-      Physics: { P: 0, A: 0, L: 0, total: 0 },
-    })
+    expect(stats.Math).toMatchObject({ P: 0, A: 0, L: 0, total: 0 })
+    expect(stats.Physics).toMatchObject({ P: 0, A: 0, L: 0, total: 0 })
   })
 
   it('correctly tallies P, A, L across multiple days', () => {
@@ -24,8 +22,8 @@ describe('calcSubjectStats', () => {
       '2025-03-20': { Math: 'A', Physics: 'P' },
     }
     const stats = calcSubjectStats(['Math', 'Physics'], attendance)
-    expect(stats.Math).toEqual({ P: 1, A: 1, L: 1, total: 3 })
-    expect(stats.Physics).toEqual({ P: 2, A: 1, L: 0, total: 3 })
+    expect(stats.Math).toMatchObject({ P: 1, A: 1, L: 1, total: 3 })
+    expect(stats.Physics).toMatchObject({ P: 2, A: 1, L: 0, total: 3 })
   })
 
   it('ignores attendance entries for unknown subjects', () => {
@@ -33,13 +31,13 @@ describe('calcSubjectStats', () => {
       '2025-03-18': { Math: 'P', UnknownSubject: 'A' },
     }
     const stats = calcSubjectStats(['Math'], attendance)
-    expect(stats.Math).toEqual({ P: 1, A: 0, L: 0, total: 1 })
+    expect(stats.Math).toMatchObject({ P: 1, A: 0, L: 0, total: 1 })
     expect(stats.UnknownSubject).toBeUndefined()
   })
 
   it('handles single subject single day', () => {
     const stats = calcSubjectStats(['Math'], { '2025-03-18': { Math: 'P' } })
-    expect(stats.Math).toEqual({ P: 1, A: 0, L: 0, total: 1 })
+    expect(stats.Math).toMatchObject({ P: 1, A: 0, L: 0, total: 1 })
   })
 
   it('merges tracked attendance with historical baseline data', () => {
@@ -52,7 +50,23 @@ describe('calcSubjectStats', () => {
     }
 
     const stats = calcSubjectStats(['Math'], attendance, historicalAttendance)
-    expect(stats.Math).toEqual({ P: 9, A: 3, L: 0, total: 12 })
+    expect(stats.Math).toMatchObject({ P: 9, A: 3, L: 0, total: 12 })
+  })
+
+  it('correctly factors in manualStats (Delivered, Attended, DL, ML)', () => {
+    const attendance = {
+      '2025-03-18': { Math: 'P' },
+    }
+    const manualStats = {
+      Math: { delivered: 10, attended: 6, dl: 1, ml: 1 },
+    }
+
+    const stats = calcSubjectStats(['Math'], attendance, {}, manualStats)
+    // P = 1 (tracked P) + 6 (manual attended) + 1 (DL) + 1 (ML) = 9
+    // total = 1 (tracked total) + 10 (delivered) = 11
+    expect(stats.Math.P).toBe(9)
+    expect(stats.Math.total).toBe(11)
+    expect(attendancePct(stats.Math)).toBe(82)
   })
 })
 
@@ -76,22 +90,18 @@ describe('attendancePct', () => {
 
 describe('classesNeeded', () => {
   it('returns 0 or negative when already above 75%', () => {
-    // 4 out of 5 = 80%, already above 75%
     expect(classesNeeded({ P: 4, A: 1, L: 0, total: 5 })).toBeLessThanOrEqual(0)
   })
 
   it('returns positive value when below 75%', () => {
-    // 1 out of 4 = 25%, needs more classes
     expect(classesNeeded({ P: 1, A: 3, L: 0, total: 4 })).toBeGreaterThan(0)
   })
 
   it('returns 0 when exactly at 75%', () => {
-    // 3 out of 4 = 75%
     expect(classesNeeded({ P: 3, A: 1, L: 0, total: 4 })).toBeLessThanOrEqual(0)
   })
 
   it('handles custom target threshold (e.g. 80%)', () => {
-    // 3 out of 4 = 75%, below 80% target
     expect(classesNeeded({ P: 3, A: 1, L: 0, total: 4 }, 80)).toBe(1)
   })
 
@@ -102,12 +112,10 @@ describe('classesNeeded', () => {
 
 describe('canMiss', () => {
   it('returns 0 when at exactly 75%', () => {
-    // 3 out of 4 = 75%, floor(3/0.75) - 4 = 4 - 4 = 0
     expect(canMiss({ P: 3, A: 1, L: 0, total: 4 })).toBe(0)
   })
 
   it('returns positive count when above 75%', () => {
-    // 10 out of 10 = 100%, floor(10/0.75) - 10 = 13 - 10 = 3
     expect(canMiss({ P: 10, A: 0, L: 0, total: 10 })).toBe(3)
   })
 
@@ -126,7 +134,6 @@ describe('overallPct', () => {
       '2025-03-18': { Math: 'P', Physics: 'A' },
       '2025-03-19': { Math: 'P', Physics: 'P' },
     }
-    // 3 present out of 4 = 75%
     expect(overallPct(attendance)).toBe(75)
   })
 
@@ -137,16 +144,19 @@ describe('overallPct', () => {
     expect(overallPct(attendance)).toBe(100)
   })
 
-  it('includes historical attendance totals', () => {
+  it('includes historical attendance totals and manualStats', () => {
     const attendance = {
       '2025-03-18': { Math: 'P', Physics: 'A' },
     }
-    const historicalAttendance = {
-      Math: { P: 8, A: 2, L: 0, total: 10 },
-      Physics: { P: 3, A: 1, L: 0, total: 4 },
+    const manualStats = {
+      Math: { delivered: 10, attended: 7, dl: 1, ml: 0 },
+      Physics: { delivered: 5, attended: 3, dl: 0, ml: 1 },
     }
 
-    expect(overallPct(attendance, historicalAttendance)).toBe(75)
+    // Math: 1 tracked P + 7 attended + 1 DL = 9 out of 11
+    // Physics: 1 tracked A + 3 attended + 1 ML = 4 out of 6
+    // Total present = 13, Total delivered = 17 -> 13/17 = 76.47% -> 76%
+    expect(overallPct(attendance, {}, manualStats)).toBe(76)
   })
 })
 
@@ -182,7 +192,6 @@ describe('calcStreak', () => {
     const attendance = {
       [yesterdayKey]: { Math: 'P' },
     }
-    // Should allow skipping today and still count yesterday
     expect(calcStreak(attendance)).toBe(1)
   })
 })
