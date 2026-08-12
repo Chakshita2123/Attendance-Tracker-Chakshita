@@ -37,6 +37,32 @@ function normalizeTime(tStr) {
 }
 
 /**
+ * Fetches the list of live models from Gemini API that support generateContent.
+ */
+async function fetchLiveGeminiModels(apiKey) {
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data?.models)) return [];
+
+    const validModels = data.models
+      .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+      .map(m => m.name.replace(/^models\//, ''))
+      .filter(Boolean);
+
+    // Prioritize flash models first
+    const flashModels = validModels.filter(m => m.toLowerCase().includes('flash'));
+    const nonFlashModels = validModels.filter(m => !m.toLowerCase().includes('flash'));
+
+    return [...flashModels, ...nonFlashModels];
+  } catch (err) {
+    console.warn('[Gemini ListModels Discovery Warning]', err.message);
+    return [];
+  }
+}
+
+/**
  * Call Gemini Vision API to analyze image/PDF buffer and return parsed schedule JSON
  */
 async function callGeminiVisionAPI(base64Data, mimeType) {
@@ -105,15 +131,26 @@ CRITICAL INSTRUCTIONS:
     },
   };
 
-  const candidateModels = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-pro',
-  ];
+  // Build model candidates list: env override -> live discovery -> fallback defaults
+  const candidateModels = [];
+
+  if (process.env.GEMINI_MODEL_NAME && process.env.GEMINI_MODEL_NAME.trim()) {
+    candidateModels.push(process.env.GEMINI_MODEL_NAME.trim());
+  }
+
+  const liveModels = await fetchLiveGeminiModels(apiKey);
+  liveModels.forEach(m => {
+    if (!candidateModels.includes(m)) candidateModels.push(m);
+  });
+
+  const fallbackDefaults = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-flash', 'gemini-pro'];
+  fallbackDefaults.forEach(m => {
+    if (!candidateModels.includes(m)) candidateModels.push(m);
+  });
 
   let response = null;
   let lastErrText = '';
+  let successfulModel = '';
 
   for (const modelName of candidateModels) {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -126,6 +163,7 @@ CRITICAL INSTRUCTIONS:
 
       if (res.ok) {
         response = res;
+        successfulModel = modelName;
         break;
       } else {
         lastErrText = await res.text();
@@ -139,6 +177,8 @@ CRITICAL INSTRUCTIONS:
   if (!response || !response.ok) {
     throw new Error(`Gemini API error: ${lastErrText || 'All Gemini model endpoints failed. Please check API key and models.'}`);
   }
+
+  console.log(`[Gemini API Success] Successfully parsed using model: "${successfulModel}"`);
 
   const resJson = await response.json();
   const textOutput = resJson?.candidates?.[0]?.content?.parts?.[0]?.text;
