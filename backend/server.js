@@ -37,7 +37,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   optionsSuccessStatus: 200,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
 
 // ── Route groups ──────────────────────────────────────────────────────────────
 const classRoutes      = require('./routes/classes');
@@ -45,6 +45,7 @@ const attendanceRoutes = require('./routes/attendance');
 const authRoutes       = require('./routes/auth');
 const dataRoutes       = require('./routes/data');
 const termRoutes       = require('./routes/terms');
+const timetableRoutes  = require('./routes/timetable');
 
 // ── Health check (intentionally unauthenticated — used by keep-alive ping) ────
 app.get(['/health', '/api/health'], (req, res) => {
@@ -56,6 +57,7 @@ app.use('/api/classes',    classRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/data',       dataRoutes);
 app.use('/api/terms',      termRoutes);
+app.use('/api/timetable',  timetableRoutes);
 
 // ── Static frontend (production only) ─────────────────────────────────────────
 // Serves the Vite-built React app from frontend/dist when it exists.

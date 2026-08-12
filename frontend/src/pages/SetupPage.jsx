@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Trash2, Plus, Play, CheckSquare, Clock, AlertTriangle } from 'lucide-react'
+import { Trash2, Plus, Play, CheckSquare, Clock, AlertTriangle, Sparkles, Upload } from 'lucide-react'
 import { DAYS } from '../constants'
 import { addMinutes } from '../utils/date'
 import TermManager from '../components/terms/TermManager'
 import NumberInput from '../components/ui/NumberInput'
+import TimetableUploadModal from '../components/setup/TimetableUploadModal'
 
 export default function SetupPage({
   data,
@@ -18,6 +19,7 @@ export default function SetupPage({
   const [subInput,  setSubInput]  = useState('')
   const [form, setForm] = useState({ day:null, subject:'', start:'09:00', duration: data.lectureSettings?.durationMinutes || 60 })
   const [activeDayFilter, setActiveDayFilter] = useState('ALL')
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
 
   const updateHistoricalAttendance = (subject, field, value) => {
     const numericValue = Math.max(0, parseInt(value, 10) || 0)
@@ -149,8 +151,16 @@ export default function SetupPage({
 
       {/* Step 1 — Subjects */}
       <div className="card mb-md">
-        <div className="setup-step-label">
-          <span className="step-num">1</span> SUBJECTS
+        <div className="setup-step-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><span className="step-num">1</span> SUBJECTS</div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ fontSize: 11, color: 'var(--teal)', display: 'flex', alignItems: 'center', gap: 4 }}
+            onClick={() => setIsUploadModalOpen(true)}
+          >
+            <Sparkles size={13} /> UPLOAD TIMETABLE (AI SCAN)
+          </button>
         </div>
         <div className="flex gap-sm mb-sm" style={{ alignItems:'flex-start' }}>
           <input
@@ -292,7 +302,17 @@ export default function SetupPage({
 
           {/* Step 4 — Timetable */}
           <div className="card mb-md">
-            <div className="setup-step-label"><span className="step-num">{isEditing ? 3 : 4}</span> WEEKLY TIMETABLE</div>
+            <div className="setup-step-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div><span className="step-num">{isEditing ? 3 : 4}</span> WEEKLY TIMETABLE</div>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ fontSize: 11, color: 'var(--teal)', display: 'flex', alignItems: 'center', gap: 4 }}
+                onClick={() => setIsUploadModalOpen(true)}
+              >
+                <Upload size={13} /> AI TIMETABLE SCAN
+              </button>
+            </div>
             
             {/* Day Filter Pills for focused editing */}
             <div className="timetable-day-pills mb-sm">
@@ -402,6 +422,14 @@ export default function SetupPage({
           </div>
         </>
       )}
+
+      {/* Timetable AI Scan Modal */}
+      <TimetableUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        data={data}
+        setData={setData}
+      />
     </div>
   )
 }
