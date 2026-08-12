@@ -105,18 +105,39 @@ CRITICAL INSTRUCTIONS:
     },
   };
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const candidateModels = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro',
+  ];
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  let response = null;
+  let lastErrText = '';
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error('[Gemini API Error]', response.status, errText);
-    throw new Error(`Gemini API returned error (${response.status}): ${errText}`);
+  for (const modelName of candidateModels) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        response = res;
+        break;
+      } else {
+        lastErrText = await res.text();
+        console.warn(`[Gemini API Warning] Model ${modelName} returned status ${res.status}: ${lastErrText}`);
+      }
+    } catch (fetchErr) {
+      console.warn(`[Gemini API Fetch Warning] Model ${modelName} failed: ${fetchErr.message}`);
+    }
+  }
+
+  if (!response || !response.ok) {
+    throw new Error(`Gemini API error: ${lastErrText || 'All Gemini model endpoints failed. Please check API key and models.'}`);
   }
 
   const resJson = await response.json();
