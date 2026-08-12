@@ -1,84 +1,107 @@
-# Implementation Plan — Google OAuth Authentication Migration
+# Implementation Plan: Timetable Upload Modal Fix & UI Polish Pass
 
-This plan details replacing the existing email/password + Brevo password-reset authentication system with Google OAuth 2.0 (Google Identity Services) as the single, primary login method for MARKD.
+## Overview
+This plan addresses the **Timetable Upload Modal (AI Scan)** bug where the "Confirm & Apply" button is cut off on mobile devices, ensures full responsiveness at 375px width, and outlines a multi-step process for a cross-platform UI polish pass across Web and Android APK.
 
-## Account Linking Strategy for Existing Users
+---
+
+## User Directives & Process Confirmation
 
 > [!IMPORTANT]
-> **How Existing Users are Handled:**
-> When a user logs in via Google OAuth:
-> 1. Look up existing user by `googleId`.
-> 2. If not found, look up existing user by `email` (matching the Google account email).
-> 3. If found by `email`, **link the account automatically** by attaching `googleId`, `name`, and `picture` to that existing User document in MongoDB. This ensures existing users lose zero data (their classes, timetable, attendance history remain linked).
-> 4. If neither matches, create a new User document with `googleId`, `email`, `name`, and `picture`.
+> **Cross-Platform & Build Requirement**:
+> All changes will be developed and verified to work identically on both desktop/mobile web browsers and Capacitor's Android WebView.
+> Whenever changes are ready for testing on an Android device/emulator:
+> 1. Run `npm run build && npx cap sync android`
+> 2. Rebuild the Android APK to see changes reflected in the installed native app.
 
 ---
 
-## File Summary: Files to Delete & Modify
+## Step 1: Fix Modal Scroll & Confirm Button Visibility
 
-### Files to DELETE (5 files):
-- [DELETE] [backend/email.js](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/backend/email.js)
-- [DELETE] [backend/__tests__/routes/auth.passwordreset.test.js](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/backend/__tests__/routes/auth.passwordreset.test.js)
-- [DELETE] [backend/__tests__/routes/auth.ratelimit.test.js](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/backend/__tests__/routes/auth.ratelimit.test.js)
-- [DELETE] [frontend/src/pages/ForgotPasswordPage.jsx](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/frontend/src/pages/ForgotPasswordPage.jsx)
-- [DELETE] [frontend/src/pages/ResetPasswordPage.jsx](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/frontend/src/pages/ResetPasswordPage.jsx)
+### Root Cause Analysis
+In [TimetableUploadModal.jsx](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/frontend/src/components/setup/TimetableUploadModal.jsx), the action button rows are currently nested **inside** the scrollable `Modal Body` container (`overflowY: 'auto'`).
 
-### Files to MODIFY (11 files):
-- [MODIFY] [backend/package.json](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/backend/package.json) — Add `google-auth-library`.
-- [MODIFY] [backend/models/User.js](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/backend/models/User.js) — Update schema for Google OAuth fields.
-- [MODIFY] [backend/auth.js](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/backend/auth.js) — Remove scrypt password hashing functions.
-- [MODIFY] [backend/routes/auth.js](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/backend/routes/auth.js) — Replace email/password routes with `POST /api/auth/google`.
-- [MODIFY] [backend/.env.example](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/backend/.env.example) — Add `GOOGLE_CLIENT_ID`. Remove Brevo keys.
-- [MODIFY] [backend/__tests__/routes/auth.test.js](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/backend/__tests__/routes/auth.test.js) — Update tests for `POST /api/auth/google`.
-- [MODIFY] [frontend/index.html](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/frontend/index.html) — Add Google Identity Services script.
-- [MODIFY] [frontend/.env](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/frontend/.env) — Add `VITE_GOOGLE_CLIENT_ID`.
-- [MODIFY] [frontend/src/hooks/useAuth.js](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/frontend/src/hooks/useAuth.js) — Update hook to export `signInWithGoogle`.
-- [MODIFY] [frontend/src/pages/AuthPage.jsx](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/frontend/src/pages/AuthPage.jsx) — Replace email/password form with Google Sign-In button.
-- [MODIFY] [frontend/src/App.jsx](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/frontend/src/App.jsx) — Remove legacy resetToken URL handling.
+When Gemini extracts a long schedule (e.g. 6+ subjects and multiple slots):
+1. The list content inside `Modal Body` exceeds the modal viewport height (`90vh` / `100dvh`).
+2. The `CONFIRM & APPLY TO TIMETABLE` button gets pushed down to the bottom of the scrollable content.
+3. On small mobile viewports (375px width, ~667px height), the button is completely hidden below the fold and cut off unless scrolled to the absolute bottom.
+
+### Proposed Code Fix
+We restructure [TimetableUploadModal.jsx](file:///c:/Attendance-tracker-portfolio/Attendance-Tracker/frontend/src/components/setup/TimetableUploadModal.jsx) into 3 distinct vertical flex regions:
+1. **Modal Header** (`flex-shrink: 0`): Fixed at top.
+2. **Modal Body** (`flex: 1`, `overflow-y: auto`, `-webkit-overflow-scrolling: touch`): Scrollable middle section containing error alerts, subject tags, and extracted class slot cards.
+3. **Modal Footer** (`flex-shrink: 0`, `background: var(--bg-raised)`, `border-top: 1px solid var(--border)`): Fixed/sticky at bottom, incorporating safe area insets (`padding-bottom: max(14px, env(safe-area-inset-bottom, 14px))`).
+
+#### Fixed Code Structure:
+```jsx
+<div className="card" style={{ width: '100%', maxWidth: 640, maxHeight: 'calc(100dvh - 32px)', display: 'flex', flexDirection: 'column', ... }}>
+  {/* 1. Header (Fixed Top) */}
+  <div style={{ padding: '16px 20px', flexShrink: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-raised)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    ...
+  </div>
+
+  {/* 2. Scrollable Body (Middle only) */}
+  <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
+    {error && ( ... )}
+    {step === 'upload' && ( <UploadStepContent /> )}
+    {step === 'preview' && ( <PreviewStepContent /> )}
+  </div>
+
+  {/* 3. Footer (Fixed Bottom - Always visible) */}
+  <div style={{ padding: '14px 16px', paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))', flexShrink: 0, borderTop: '1px solid var(--border)', background: 'var(--bg-raised)' }}>
+    {step === 'upload' ? (
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <button className="btn" onClick={resetAndClose} disabled={loading} style={{ minHeight: 44 }}>CANCEL</button>
+        <button className="btn btn-primary" disabled={!file || loading} onClick={handleUploadAndScan} style={{ minHeight: 44 }}>
+          {loading ? <><RefreshCw className="spin" size={14}/> Scanning...</> : <><Sparkles size={14}/> SCAN TIMETABLE</>}
+        </button>
+      </div>
+    ) : (
+      <div className="timetable-modal-footer-actions" style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+        <button className="btn btn-ghost" onClick={() => setStep('upload')} style={{ minHeight: 44 }}>
+          ← Re-upload
+        </button>
+        <div style={{ display: 'flex', gap: 8, flex: 1, justifyContent: 'flex-end' }}>
+          <button className="btn" onClick={resetAndClose} style={{ minHeight: 44 }}>
+            CANCEL
+          </button>
+          <button className="btn btn-primary" onClick={handleConfirmAndApply} style={{ minHeight: 44, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <CheckCircle2 size={16} /> CONFIRM & APPLY
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
+```
 
 ---
 
-## Detailed Step-by-Step Plan
+## Step 2: Responsiveness Audit for Upload Timetable Modal (375px)
 
-### Phase 1: Backend Updates
-1. Install `google-auth-library` in `backend/`.
-2. Update `User.js` model schema:
-   - Remove: `passwordHash`, `passwordResetToken`, `passwordResetExpiry`.
-   - Add: `googleId` (String, unique, sparse), `name` (String), `picture` (String).
-3. Clean up `backend/auth.js`:
-   - Remove `hashPassword` and `verifyPassword`.
-   - Retain `createToken`, `readBearerToken`, `requireAuth`, `normalizeEmail`.
-4. Update `backend/routes/auth.js`:
-   - Remove `signup`, `signin`, `forgot-password`, `reset-password` routes and rate limiters.
-   - Delete `backend/email.js`.
-   - Implement `POST /api/auth/google` route:
-     - Receives Google ID token `credential` from client.
-     - Verifies with `OAuth2Client.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID })`.
-     - Finds user by `googleId` or `email`, or creates new user record.
-     - Issues JWT token (`createToken`) matching existing session format.
-5. Update `backend/.env.example` with `GOOGLE_CLIENT_ID`.
-6. Refactor unit tests in `backend/__tests__/routes/auth.test.js` and delete obsolete test files (`auth.passwordreset.test.js`, `auth.ratelimit.test.js`).
+Audit areas to verify/adjust in Step 2:
+1. **Header & Badge wrapping**: Ensure long class names and day/time text wrap cleanly.
+2. **Select Dropdowns & Buttons**: Min 44px tap-target height for touch screen usability on mobile WebViews.
+3. **No Horizontal Scroll**: Ensure 100% boundary compliance without standard modal horizontal scrollbar.
 
-### Phase 2: Frontend Updates
-1. Include Google Identity Services script in `frontend/index.html`.
-2. Update `useAuth.js`:
-   - Replace `signIn` and `signUp` functions with `signInWithGoogle(credential)`.
-   - Post Google credential token to `POST /api/auth/google`.
-   - Preserve existing `markd_auth_token` in `localStorage` & session loading logic.
-3. Update `AuthPage.jsx`:
-   - Remove email/password inputs, login/signup toggle, and forgot password link.
-   - Render official Google Sign-In button (`google.accounts.id.renderButton`).
-4. Update `App.jsx`:
-   - Delete `getResetToken()` URL checker and remove `reset-password` & `forgot-password` pre-auth views.
-   - Delete `ForgotPasswordPage.jsx` & `ResetPasswordPage.jsx`.
+---
+
+## Step 3: Scope & Plan for General UI Polish Pass
+
+Following user approval of Step 1 & Step 2, a page-by-page proposal will be presented for review covering:
+- **Tracker Page**: Card rhythm, attendance percentage indicator badge, active class glow states.
+- **Analytics Page**: What-if calculator layout alignment, progress rings, status pill contrast.
+- **Edit Setup Page**: Tab navigation spacing, add/delete subject button polish.
+- **Auth Page**: Login modal/card alignment, OAuth button loading skeletons.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-- Run `npm test` in `backend/` to verify all backend unit tests pass.
+- Run existing test suites (`npm test` in `frontend/`) to verify no regressions.
 
-### Manual Testing & Setup
-- Configure `GOOGLE_CLIENT_ID` in Google Cloud Console.
-- Test Google Sign-In button click, popup, backend token verification, user creation, and JWT issue.
+### Manual Verification
+- Test preview modal with 6+ subjects and ambiguous elective options at 375px mobile screen size.
+- Verify modal header and footer remain fixed while body scrolls smoothly.
+- Build & sync with Android: `npm run build && npx cap sync android`.

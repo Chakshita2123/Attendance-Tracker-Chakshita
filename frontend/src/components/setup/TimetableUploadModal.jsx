@@ -232,7 +232,7 @@ export default function TimetableUploadModal({ isOpen, onClose, data, setData })
         style={{
           width: '100%',
           maxWidth: 640,
-          maxHeight: '90vh',
+          maxHeight: 'calc(100dvh - 32px)',
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: 'var(--bg-surface)',
@@ -252,6 +252,7 @@ export default function TimetableUploadModal({ isOpen, onClose, data, setData })
             alignItems: 'center',
             justifyContent: 'space-between',
             background: 'var(--bg-raised)',
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -266,7 +267,7 @@ export default function TimetableUploadModal({ isOpen, onClose, data, setData })
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: 20, overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
           {error && (
             <div
               style={{
@@ -353,31 +354,9 @@ export default function TimetableUploadModal({ isOpen, onClose, data, setData })
                 )}
               </div>
 
-              <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5, marginBottom: 20 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5, marginBottom: 12 }}>
                 💡 <strong>How it works:</strong> Gemini AI reads your timetable image/PDF to detect subject names, days, and timeslots.
                 Any elective choices (e.g. AOC/BPC) will be flagged for your review before adding.
-              </div>
-
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button className="btn" onClick={resetAndClose} disabled={loading}>
-                  CANCEL
-                </button>
-                <button
-                  className="btn btn-primary"
-                  disabled={!file || loading}
-                  onClick={handleUploadAndScan}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                >
-                  {loading ? (
-                    <>
-                      <RefreshCw size={14} className="spin" /> Scanning with Gemini AI...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={14} /> SCAN TIMETABLE
-                    </>
-                  )}
-                </button>
               </div>
             </div>
           )}
@@ -416,7 +395,7 @@ export default function TimetableUploadModal({ isOpen, onClose, data, setData })
               </div>
 
               {/* Schedule Slots Section */}
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 10 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5, marginBottom: 8, color: 'var(--text-2)' }}>
                   2. EXTRACTED CLASSES ({extractedSlots.filter((s) => s.selected).length} selected)
                 </div>
@@ -542,21 +521,54 @@ export default function TimetableUploadModal({ isOpen, onClose, data, setData })
                   </div>
                 )}
               </div>
+            </div>
+          )}
+        </div>
 
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                <button className="btn btn-ghost" onClick={() => setStep('upload')}>
-                  ← Re-upload File
+        {/* Modal Footer - Fixed at bottom */}
+        <div
+          style={{
+            padding: '14px 16px',
+            paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--bg-raised)',
+            flexShrink: 0,
+          }}
+        >
+          {step === 'upload' ? (
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={resetAndClose} disabled={loading} style={{ minHeight: 44 }}>
+                CANCEL
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!file || loading}
+                onClick={handleUploadAndScan}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 44 }}
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw size={14} className="spin" /> Scanning with Gemini AI...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={14} /> SCAN TIMETABLE
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button className="btn btn-ghost" onClick={() => setStep('upload')} style={{ minHeight: 44 }}>
+                ← Re-upload File
+              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1 }}>
+                <button className="btn" onClick={resetAndClose} style={{ minHeight: 44 }}>
+                  CANCEL
                 </button>
-
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button className="btn" onClick={resetAndClose}>
-                    CANCEL
-                  </button>
-                  <button className="btn btn-primary" onClick={handleConfirmAndApply}>
-                    <CheckCircle2 size={14} /> CONFIRM & APPLY TO TIMETABLE
-                  </button>
-                </div>
+                <button className="btn btn-primary" onClick={handleConfirmAndApply} style={{ minHeight: 44, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle2 size={16} /> CONFIRM & APPLY TO TIMETABLE
+                </button>
               </div>
             </div>
           )}
