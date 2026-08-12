@@ -7,13 +7,6 @@ export default function CalendarHeatmap({ dailyLog }) {
 
   const hasScrolledRef = useRef(false)
 
-  useEffect(() => {
-    if (scrollRef.current && gridCols.length > 0 && !hasScrolledRef.current) {
-      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
-      hasScrolledRef.current = true
-    }
-  }, [gridCols])
-
   const { gridCols, months } = useMemo(() => {
     const endStr  = todayStr()
     const endDate = new Date(endStr)
@@ -59,6 +52,13 @@ export default function CalendarHeatmap({ dailyLog }) {
     if (week.length) gridCols.push(week)
     return { gridCols, months }
   }, [dailyLog])
+
+  useEffect(() => {
+    if (scrollRef.current && gridCols.length > 0 && !hasScrolledRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
+      hasScrolledRef.current = true
+    }
+  }, [gridCols])
 
   const dayLabels = ['M','T','W','T','F','S']
 
