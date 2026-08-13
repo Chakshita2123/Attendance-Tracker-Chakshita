@@ -5,8 +5,6 @@ import { getApiBaseUrl } from '../utils/api'
 const LS_KEY = 'markd_v1'
 const getBaseUrl = () => getApiBaseUrl()
 
-
-
 async function getAuthHeaders(user) {
   return user?.authToken
     ? { Authorization: `Bearer ${user.authToken}` }
@@ -26,9 +24,13 @@ export function useAttendance(user) {
   // concurrency. Starts at 0; updated whenever we successfully load or save.
   const serverVersion = useRef(0)
 
+  // Serialization & pending save refs to prevent in-flight request races
+  const isSavingRef = useRef(false)
+  const hasPendingSaveRef = useRef(false)
+  const latestDataRef = useRef(data)
+  latestDataRef.current = data
+
   // ── Allow App to inject the showToast function ────────────────────────────
-  // useAttendance is instantiated before Toast is available, so we inject
-  // showToast via a ref callback rather than a prop.
   const setToastFn = useCallback((fn) => {
     toastFnRef.current = fn
   }, [])
@@ -61,7 +63,7 @@ export function useAttendance(user) {
             attendance:           remote.attendance            || {},
             dailyLog:             remote.dailyLog              || remote.daily_log || {},
             historicalAttendance: remote.historicalAttendance  || remote.historical_attendance || {},
-            manualStats:          remote.manualStats          || {},
+            manualStats:          remote.manualStats           || {},
             phase:                remote.phase                 || 'setup',
             lectureSettings:      remote.lectureSettings       || remote.lecture_settings || DEFAULT_DATA.lectureSettings,
           })
@@ -84,69 +86,104 @@ export function useAttendance(user) {
     load()
   }, [user])
 
+  // ── Serialized save function ───────────────────────────────────────────────
+  const performSave = useCallback(async () => {
+    if (!user) return
+
+    // If a save is already in-flight, mark pending and return.
+    // The active save's finally block will execute the pending save once it finishes.
+    if (isSavingRef.current) {
+      hasPendingSaveRef.current = true
+      return
+    }
+
+    isSavingRef.current = true
+    hasPendingSaveRef.current = false
+    setSyncStatus('syncing')
+
+    try {
+      const payloadData = latestDataRef.current
+      const sendingVersion = serverVersion.current
+
+      const res = await fetch(`${getBaseUrl()}/api/data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(await getAuthHeaders(user)),
+        },
+        // Include _version so the server can detect concurrent saves
+        body: JSON.stringify({ data: { ...payloadData, _version: sendingVersion } }),
+      })
+
+      if (res.status === 409) {
+        // Genuine Optimistic concurrency conflict: another tab modified data.
+        setSyncStatus('error')
+        showToast(
+          '⚠️ Conflict: another tab modified your data. Reloading…',
+          'error'
+        )
+        // Re-fetch fresh data and update local state + version
+        const freshRes = await fetch(`${getBaseUrl()}/api/data`, {
+          headers: await getAuthHeaders(user),
+        })
+        if (freshRes.ok) {
+          const fresh = await freshRes.json()
+          serverVersion.current = fresh._version ?? 0
+          setData({
+            subjects:             fresh.subjects              || [],
+            timetable:            fresh.timetable             || DEFAULT_DATA.timetable,
+            attendance:           fresh.attendance            || {},
+            dailyLog:             fresh.dailyLog              || {},
+            historicalAttendance: fresh.historicalAttendance  || {},
+            manualStats:          fresh.manualStats           || {},
+            phase:                fresh.phase                 || 'setup',
+            lectureSettings:      fresh.lectureSettings       || DEFAULT_DATA.lectureSettings,
+          })
+          setSyncStatus('synced')
+        }
+        return
+      }
+
+      if (!res.ok) throw new Error('Failed to sync')
+
+      const resJson = await res.json()
+      // Use authoritative server version from response
+      if (resJson.version !== undefined && resJson.version !== null) {
+        serverVersion.current = resJson.version
+      } else {
+        serverVersion.current += 1
+      }
+      setSyncStatus('synced')
+    } catch {
+      setSyncStatus('error')
+    } finally {
+      isSavingRef.current = false
+
+      // If changes occurred while save was in-flight, schedule follow-up save after 300ms safety gap
+      if (hasPendingSaveRef.current) {
+        hasPendingSaveRef.current = false
+        clearTimeout(saveTimer.current)
+        saveTimer.current = setTimeout(() => {
+          performSave()
+        }, 300)
+      }
+    }
+  }, [user, showToast])
+
   // ── Debounced cloud save whenever data changes ────────────────────────────
   useEffect(() => {
     if (isFirstLoad.current || !user) return
 
     // Always update localStorage immediately for offline resilience
     localStorage.setItem(LS_KEY, JSON.stringify(data))
-    setSyncStatus('syncing')
 
     clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`${getBaseUrl()}/api/data`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(await getAuthHeaders(user)),
-          },
-          // Include _version so the server can detect concurrent saves
-          body: JSON.stringify({ data: { ...data, _version: serverVersion.current } }),
-        })
-
-        if (res.status === 409) {
-          // Optimistic concurrency conflict: another tab saved in the meantime.
-          // Don't overwrite — instead reload fresh data from the server.
-          setSyncStatus('error')
-          showToast(
-            '⚠️ Conflict: another tab modified your data. Reloading…',
-            'error'
-          )
-          // Re-fetch fresh data and update local state + version
-          const freshRes = await fetch(`${getBaseUrl()}/api/data`, {
-            headers: await getAuthHeaders(user),
-          })
-          if (freshRes.ok) {
-            const fresh = await freshRes.json()
-            serverVersion.current = fresh._version ?? 0
-            setData({
-              subjects:             fresh.subjects              || [],
-              timetable:            fresh.timetable             || DEFAULT_DATA.timetable,
-              attendance:           fresh.attendance            || {},
-              dailyLog:             fresh.dailyLog              || {},
-              historicalAttendance: fresh.historicalAttendance  || {},
-              phase:                fresh.phase                 || 'setup',
-              lectureSettings:      fresh.lectureSettings       || DEFAULT_DATA.lectureSettings,
-            })
-            setSyncStatus('synced')
-          }
-          return
-        }
-
-        if (!res.ok) throw new Error('Failed to sync')
-
-        // Successful save: increment local version mirror to stay in sync
-        // (server increments version on each POST)
-        serverVersion.current += 1
-        setSyncStatus('synced')
-      } catch {
-        setSyncStatus('error')
-      }
+    saveTimer.current = setTimeout(() => {
+      performSave()
     }, 1000)
 
     return () => clearTimeout(saveTimer.current)
-  }, [data, user]) // eslint-disable-line
+  }, [data, user, performSave])
 
   // ── Hard reset ────────────────────────────────────────────────────────────
   const resetData = async () => {
@@ -158,7 +195,6 @@ export function useAttendance(user) {
             'Content-Type': 'application/json',
             ...(await getAuthHeaders(user)),
           },
-          // Pass current version to avoid a spurious conflict on reset
           body: JSON.stringify({ data: { ...DEFAULT_DATA, _version: serverVersion.current } }),
         })
         serverVersion.current = 0

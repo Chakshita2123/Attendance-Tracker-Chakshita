@@ -213,6 +213,7 @@ router.post('/', requireAuth, async (req, res) => {
       subjects,   // kept in blob as a debug-friendly mirror of Class documents
     };
 
+    let newVersion = 1;
     if (currentData) {
       // Update: increment version atomically
       // markModified is required because Mongoose doesn't track changes to Mixed fields
@@ -220,12 +221,14 @@ router.post('/', requireAuth, async (req, res) => {
       currentData.markModified('data');
       currentData.version = currentVersion + 1;
       await currentData.save();
+      newVersion = currentData.version;
     } else {
       // Create: first-time save for this user
       await UserData.create({ userId, data: configBlob, version: 1 });
+      newVersion = 1;
     }
 
-    res.json({ message: 'Data saved successfully' });
+    res.json({ message: 'Data saved successfully', version: newVersion });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save data: ' + err.message });
   }

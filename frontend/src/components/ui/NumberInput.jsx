@@ -18,6 +18,12 @@ export default function NumberInput({
     value !== undefined && value !== null ? String(value) : String(fallback)
   )
   const inputRef = useRef(null)
+  const debounceTimer = useRef(null)
+
+  useEffect(() => {
+    // Clean up timer on unmount
+    return () => clearTimeout(debounceTimer.current)
+  }, [])
 
   useEffect(() => {
     // Only update local input text from parent prop when input is not focused
@@ -38,12 +44,20 @@ export default function NumberInput({
         let clamped = num
         if (min !== undefined && clamped < min) clamped = min
         if (max !== undefined && clamped > max) clamped = max
-        onChange(clamped)
+
+        // Debounce parent onChange by 500ms while user is typing rapidly
+        clearTimeout(debounceTimer.current)
+        debounceTimer.current = setTimeout(() => {
+          onChange(clamped)
+        }, 500)
       }
     }
   }
 
   const handleBlur = () => {
+    // Immediately cancel pending typing debounce and commit value synchronously
+    clearTimeout(debounceTimer.current)
+
     let num = parseInt(localVal, 10)
     if (isNaN(num)) {
       num = fallback
