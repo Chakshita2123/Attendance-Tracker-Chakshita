@@ -111,7 +111,7 @@ export default function WhatIfCalculator({ subjects, subStats, attendance, histo
         }}
       />
 
-      <div className="card-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div className="card-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Calculator size={20} color="var(--teal)" />
           <span style={{ fontFamily: 'var(--font-head)', letterSpacing: '0.06em', fontSize: '1.05rem', fontWeight: 800, color: 'var(--teal)' }}>
@@ -208,7 +208,7 @@ export default function WhatIfCalculator({ subjects, subStats, attendance, histo
       >
         <div className="flex-between mb-sm" style={{ flexWrap: 'wrap', gap: 12 }}>
           {/* Comparison strip */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <div style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: 'var(--font-head)', color: 'var(--text-2)' }}>

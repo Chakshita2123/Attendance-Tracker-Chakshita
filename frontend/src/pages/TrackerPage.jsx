@@ -88,7 +88,7 @@ export default function TrackerPage({ data, pushUndo, handleUndo, undoStack, sho
       <div className="card mb-md" style={{ padding:'14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           {/* Quick-access 7-day strip */}
-          <div className="date-strip" style={{ flex: 1, minWidth: 0, width: '100%' }}>
+          <div className="date-strip" style={{ flex: '1 1 100%', minWidth: 0 }}>
             {days.map(d => {
               const dNum = d.slice(8)
               const dDay = d === today ? 'TODAY' : weekday(d).toUpperCase()
@@ -110,6 +110,8 @@ export default function TrackerPage({ data, pushUndo, handleUndo, undoStack, sho
             padding: '6px 12px',
             borderRadius: 'var(--r-sm)',
             border: '1px solid var(--border)',
+            maxWidth: '100%',
+            flexWrap: 'wrap',
           }}>
             <CalendarIcon size={14} color="var(--teal)" />
             <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>JUMP TO:</span>
@@ -131,6 +133,7 @@ export default function TrackerPage({ data, pushUndo, handleUndo, undoStack, sho
                 fontSize: 12,
                 cursor: 'pointer',
                 outline: 'none',
+                maxWidth: '100%',
               }}
             />
           </div>
@@ -186,7 +189,7 @@ export default function TrackerPage({ data, pushUndo, handleUndo, undoStack, sho
 
       {/* Pie summary — only when something is marked */}
       {classes.length > 0 && pieData.length > 0 && pieData[0].name !== 'Unmarked' && (
-        <TiltCard className="card mt-md flex-between" style={{ gap:24 }}>
+        <TiltCard className="card mt-md flex-between" style={{ gap: 24, flexWrap: 'wrap' }}>
           <div>
             <div className="section-title">TODAY'S BREAKDOWN</div>
             <div style={{ fontSize:12, color:'var(--text-2)' }}>{selectedDate}</div>

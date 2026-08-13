@@ -151,7 +151,7 @@ export default function SetupPage({
 
       {/* Step 1 — Subjects */}
       <div className="card mb-md">
-        <div className="setup-step-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="setup-step-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div><span className="step-num">1</span> SUBJECTS</div>
           <button
             type="button"
@@ -262,7 +262,7 @@ export default function SetupPage({
           {/* Step 3 / 2 — Class settings */}
           <div className="card mb-md">
             <div className="setup-step-label"><span className="step-num">{isEditing ? 2 : 3}</span> CLASS SETTINGS</div>
-            <div className="flex-between mb-sm" style={{ paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+            <div className="flex-between mb-sm" style={{ paddingBottom: 12, borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <div style={{ fontFamily:'var(--font-head)', fontSize:'0.9rem', fontWeight:700 }}>Default Lecture Duration</div>
                 <div className="text-dimmed" style={{ fontSize:11, marginTop:3 }}>Used to calculate time spent in class.</div>
@@ -281,7 +281,7 @@ export default function SetupPage({
               </div>
             </div>
 
-            <div className="flex-between">
+            <div className="flex-between" style={{ flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <div style={{ fontFamily:'var(--font-head)', fontSize:'0.9rem', fontWeight:700 }}>Target Attendance Threshold</div>
                 <div className="text-dimmed" style={{ fontSize:11, marginTop:3 }}>Minimum attendance percentage target (triggers recovery warnings).</div>
@@ -302,7 +302,7 @@ export default function SetupPage({
 
           {/* Step 4 — Timetable */}
           <div className="card mb-md">
-            <div className="setup-step-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="setup-step-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <div><span className="step-num">{isEditing ? 3 : 4}</span> WEEKLY TIMETABLE</div>
               <button
                 type="button"
@@ -349,11 +349,11 @@ export default function SetupPage({
                     ? <div style={{ fontSize:11, color:'var(--text-3)', padding:'8px 0', textAlign:'center' }}>No classes.</div>
                     : data.timetable[day].map(cls => (
                       <div key={cls.id} className="class-slot">
-                        <div>
+                        <div style={{ minWidth: 0, flex: 1, marginRight: 8 }}>
                           <div className="class-slot-time">{cls.start} – {addMinutes(cls.start,cls.duration)}</div>
-                          <div className="class-slot-name">{cls.subject}</div>
+                          <div className="class-slot-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cls.subject}</div>
                         </div>
-                        <button className="btn btn-ghost btn-icon" style={{ color:'var(--red)' }}
+                        <button className="btn btn-ghost btn-icon" style={{ color:'var(--red)', flexShrink: 0 }}
                           onClick={()=>removeClass(day,cls.id)}><Trash2 size={13}/></button>
                       </div>
                     ))

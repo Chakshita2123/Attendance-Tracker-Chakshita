@@ -21,72 +21,60 @@ function normalizeDay(dStr) {
   return DAY_MAP[clean] || null;
 }
 
-function normalizeTime(tStr) {
-  if (!tStr) return '09:00';
-  const clean = String(tStr).trim();
-  const match = clean.match(/(\d{1,2})[:.](\d{2})\s*(am|pm)?/i);
-  if (match) {
-    let hrs = parseInt(match[1], 10);
-    const mins = match[2];
-    const ampm = match[3] ? match[3].toLowerCase() : null;
+/**
+ * Enhanced time normalizer handling 12-hour/24-hour formats, range strings, and missing minutes.
+ * E.g. "9", "9 AM", "09:00", "9.00", "9:00 AM - 10:00 AM", "14:30" -> "09:00" / "14:30".
+ */
+function normalizeTime(val) {
+  if (!val) return '09:00';
+  const clean = String(val).trim();
+
+  // If time range like "09:00 - 10:00" or "9am to 10am", extract start portion
+  const startPart = clean.split(/[-–—]| to /i)[0].trim();
+
+  // Match 1: HH:MM or H:MM with optional AM/PM (e.g., "9:00", "09.30", "2:15 pm", "14:00")
+  const matchWithMins = startPart.match(/(\d{1,2})[:.](\d{2})\s*(am|pm)?/i);
+  if (matchWithMins) {
+    let hrs = parseInt(matchWithMins[1], 10);
+    const mins = matchWithMins[2];
+    const ampm = matchWithMins[3] ? matchWithMins[3].toLowerCase() : null;
+
     if (ampm === 'pm' && hrs < 12) hrs += 12;
     if (ampm === 'am' && hrs === 12) hrs = 0;
+    hrs = Math.min(23, Math.max(0, hrs));
+
     return `${String(hrs).padStart(2, '0')}:${mins}`;
   }
+
+  // Match 2: H or HH with AM/PM (e.g., "9 AM", "2pm", "10am")
+  const matchHoursOnly = startPart.match(/(\d{1,2})\s*(am|pm)/i);
+  if (matchHoursOnly) {
+    let hrs = parseInt(matchHoursOnly[1], 10);
+    const ampm = matchHoursOnly[2].toLowerCase();
+
+    if (ampm === 'pm' && hrs < 12) hrs += 12;
+    if (ampm === 'am' && hrs === 12) hrs = 0;
+    hrs = Math.min(23, Math.max(0, hrs));
+
+    return `${String(hrs).padStart(2, '0')}:00`;
+  }
+
+  // Match 3: Standalone 1 or 2 digits (e.g. "9", "14")
+  const matchDigits = startPart.match(/^(\d{1,2})$/);
+  if (matchDigits) {
+    let hrs = parseInt(matchDigits[1], 10);
+    if (hrs >= 1 && hrs <= 23) {
+      return `${String(hrs).padStart(2, '0')}:00`;
+    }
+  }
+
   return '09:00';
 }
 
-/**
- * Fetches the list of live models from Gemini API that support generateContent.
- */
-async function fetchLiveGeminiModels(apiKey) {
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!Array.isArray(data?.models)) return [];
+const CONCISE_PROMPT = `
+You are an expert academic timetable OCR parser. Extract all subject names and scheduled class slots from this timetable file.
 
-    const validModels = data.models
-      .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
-      .map(m => m.name.replace(/^models\//, ''))
-      .filter(Boolean);
-
-    // Prioritize flash models first
-    const flashModels = validModels.filter(m => m.toLowerCase().includes('flash'));
-    const nonFlashModels = validModels.filter(m => !m.toLowerCase().includes('flash'));
-
-    return [...flashModels, ...nonFlashModels];
-  } catch (err) {
-    console.warn('[Gemini ListModels Discovery Warning]', err.message);
-    return [];
-  }
-}
-
-/**
- * Call Gemini Vision API to analyze image/PDF buffer and return parsed schedule JSON
- */
-async function callGeminiVisionAPI(base64Data, mimeType) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured on the backend environment.');
-  }
-
-  const promptText = `
-You are an expert academic timetable OCR parser.
-Examine the provided timetable file (image or PDF) and extract all subject names, days of the week, start times, and lecture durations.
-
-CRITICAL INSTRUCTIONS:
-1. Extract all unique subject names found in the timetable as a clean array of strings in uppercase (e.g. ["MATHS", "PHYSICS", "CHEMISTRY"]).
-2. For each scheduled class slot in the timetable grid, extract:
-   - "day": Must be one of ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].
-   - "start": Start time in 24-hour HH:MM format (e.g. "09:00", "14:30").
-   - "duration": Duration of the lecture in minutes as an integer (default 60 if not specified).
-   - "subject": The single subject name if clearly determined, OR null if ambiguous/elective.
-   - "isAmbiguous": true if the slot contains multiple subject options or elective choices (e.g. "AOC / BPC", "ELECTIVE-1 / ELECTIVE-2", "LAB A / LAB B"), otherwise false.
-   - "options": An array of subject option strings if ambiguous (e.g. ["AOC", "BPC"]), otherwise empty array [].
-   - "rawText": The exact text in the cell if ambiguous or unclear.
-
-3. Return ONLY a valid, raw JSON object (no markdown, no backticks, no explanations) matching this exact schema:
+Return ONLY a valid JSON object matching this exact schema:
 {
   "subjects": ["PHYSICS", "MATHS", "AOC", "BPC"],
   "timetable": [
@@ -109,13 +97,113 @@ CRITICAL INSTRUCTIONS:
     }
   ]
 }
+
+Rules:
+- "day": Must be one of ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].
+- "start": Start time in 24h format (e.g. "09:00").
+- "duration": Lecture duration in minutes (integer, default 60).
+- "isAmbiguous": true if slot has multiple subject choices (e.g. "AOC / BPC"), otherwise false.
+- Output raw valid JSON only (no markdown fences, no extra text).
 `;
+
+/**
+ * Normalizes raw model JSON string output into standard application format.
+ */
+function parseAndNormalizeOutput(textOutput) {
+  if (!textOutput) throw new Error('Model returned an empty response.');
+
+  const cleanedText = textOutput.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const parsed = JSON.parse(cleanedText);
+
+  const rawSubjects = Array.isArray(parsed.subjects) ? parsed.subjects : [];
+  const subjectsSet = new Set(
+    rawSubjects
+      .map(s => String(s || '').trim().toUpperCase())
+      .filter(Boolean)
+  );
+
+  const rawSlots = Array.isArray(parsed.timetable) ? parsed.timetable : [];
+  const normalizedSlots = [];
+
+  for (const slot of rawSlots) {
+    const day = normalizeDay(slot.day || slot.weekday || slot.dayOfWeek);
+    if (!day || !VALID_DAYS.includes(day)) continue;
+
+    const rawStart = slot.start || slot.startTime || slot.time || slot.start_time || slot.from || slot.rawTime;
+    const start = normalizeTime(rawStart);
+    const duration = Math.max(1, parseInt(slot.duration || slot.durationMinutes || slot.length, 10) || 60);
+    const isAmbiguous = Boolean(slot.isAmbiguous || (Array.isArray(slot.options) && slot.options.length > 1));
+
+    let subject = null;
+    let options = [];
+
+    if (isAmbiguous) {
+      options = (Array.isArray(slot.options) ? slot.options : [])
+        .map(o => String(o || '').trim().toUpperCase())
+        .filter(Boolean);
+      options.forEach(o => subjectsSet.add(o));
+    } else if (slot.subject) {
+      subject = String(slot.subject).trim().toUpperCase();
+      subjectsSet.add(subject);
+    }
+
+    normalizedSlots.push({
+      id: Math.random().toString(36).slice(2, 11),
+      day,
+      start,
+      duration,
+      subject,
+      isAmbiguous,
+      options,
+      rawText: slot.rawText || (isAmbiguous ? options.join(' / ') : subject || ''),
+    });
+  }
+
+  return {
+    subjects: Array.from(subjectsSet),
+    timetable: normalizedSlots,
+  };
+}
+
+/**
+ * Fetches the list of live models from Gemini API that support generateContent.
+ */
+async function fetchLiveGeminiModels(apiKey) {
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data?.models)) return [];
+
+    const validModels = data.models
+      .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+      .map(m => m.name.replace(/^models\//, ''))
+      .filter(Boolean);
+
+    const flashModels = validModels.filter(m => m.toLowerCase().includes('flash'));
+    const nonFlashModels = validModels.filter(m => !m.toLowerCase().includes('flash'));
+
+    return [...flashModels, ...nonFlashModels];
+  } catch (err) {
+    console.warn('[Gemini ListModels Discovery Warning]', err.message);
+    return [];
+  }
+}
+
+/**
+ * Call Gemini Vision API to analyze image/PDF buffer and return parsed schedule JSON
+ */
+async function callGeminiVisionAPI(base64Data, mimeType) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured on the backend environment.');
+  }
 
   const payload = {
     contents: [
       {
         parts: [
-          { text: promptText },
+          { text: CONCISE_PROMPT },
           {
             inlineData: {
               mimeType: mimeType || 'image/jpeg',
@@ -131,7 +219,6 @@ CRITICAL INSTRUCTIONS:
     },
   };
 
-  // Build model candidates list: env override -> live discovery -> fallback defaults
   const candidateModels = [];
 
   if (process.env.GEMINI_MODEL_NAME && process.env.GEMINI_MODEL_NAME.trim()) {
@@ -175,70 +262,120 @@ CRITICAL INSTRUCTIONS:
   }
 
   if (!response || !response.ok) {
-    throw new Error(`Gemini API error: ${lastErrText || 'All Gemini model endpoints failed. Please check API key and models.'}`);
+    throw new Error(`Gemini API error: ${lastErrText || 'All Gemini model endpoints failed.'}`);
   }
 
   console.log(`[Gemini API Success] Successfully parsed using model: "${successfulModel}"`);
 
   const resJson = await response.json();
   const textOutput = resJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+  return parseAndNormalizeOutput(textOutput);
+}
 
-  if (!textOutput) {
-    throw new Error('Gemini API returned an empty response. Unable to scan timetable.');
-  }
-
-  // Clean raw markdown if any
-  const cleanedText = textOutput.replace(/```json/gi, '').replace(/```/g, '').trim();
-  const parsed = JSON.parse(cleanedText);
-
-  // Validate & Normalize parsed output
-  const rawSubjects = Array.isArray(parsed.subjects) ? parsed.subjects : [];
-  const subjectsSet = new Set(
-    rawSubjects
-      .map(s => String(s || '').trim().toUpperCase())
-      .filter(Boolean)
-  );
-
-  const rawSlots = Array.isArray(parsed.timetable) ? parsed.timetable : [];
-  const normalizedSlots = [];
-
-  for (const slot of rawSlots) {
-    const day = normalizeDay(slot.day);
-    if (!day || !VALID_DAYS.includes(day)) continue; // ignore invalid or Sunday days if not in setup days
-
-    const start = normalizeTime(slot.start);
-    const duration = Math.max(1, parseInt(slot.duration, 10) || 60);
-    const isAmbiguous = Boolean(slot.isAmbiguous || (Array.isArray(slot.options) && slot.options.length > 1));
-
-    let subject = null;
-    let options = [];
-
-    if (isAmbiguous) {
-      options = (Array.isArray(slot.options) ? slot.options : [])
-        .map(o => String(o || '').trim().toUpperCase())
-        .filter(Boolean);
-      options.forEach(o => subjectsSet.add(o));
-    } else if (slot.subject) {
-      subject = String(slot.subject).trim().toUpperCase();
-      subjectsSet.add(subject);
-    }
-
-    normalizedSlots.push({
-      id: Math.random().toString(36).slice(2, 11),
-      day,
-      start,
-      duration,
-      subject,
-      isAmbiguous,
-      options,
-      rawText: slot.rawText || (isAmbiguous ? options.join(' / ') : subject || ''),
+/**
+ * Fetches live Groq models and filters vision-capable models.
+ */
+async function fetchLiveGroqVisionModels(apiKey) {
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/models', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
     });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data?.data)) return [];
+
+    const visionModels = data.data
+      .map(m => m.id)
+      .filter(id => id && (id.includes('vision') || id.includes('llama-3.2')));
+
+    return visionModels;
+  } catch (err) {
+    console.warn('[Groq ListModels Discovery Warning]', err.message);
+    return [];
+  }
+}
+
+/**
+ * Call Groq Vision API as a fallback when Gemini API calls fail or hit rate limits
+ */
+async function callGroqVisionAPI(base64Data, mimeType) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error('GROQ_API_KEY is not configured on the backend environment.');
   }
 
-  return {
-    subjects: Array.from(subjectsSet),
-    timetable: normalizedSlots,
-  };
+  const liveGroqModels = await fetchLiveGroqVisionModels(apiKey);
+  const fallbackGroqModels = [
+    'llama-3.2-11b-vision-preview',
+    'llama-3.2-90b-vision-preview',
+    'llama-3.2-11b-vision-instruct',
+    'llama-3.2-90b-vision-instruct',
+  ];
+
+  const candidateModels = Array.from(new Set([...liveGroqModels, ...fallbackGroqModels])).filter(Boolean);
+
+  let response = null;
+  let lastErrText = '';
+  let successfulModel = '';
+
+  const imageUrl = `data:${mimeType || 'image/jpeg'};base64,${base64Data}`;
+
+  for (const modelName of candidateModels) {
+    const payload = {
+      model: modelName,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: CONCISE_PROMPT },
+            {
+              type: 'image_url',
+              image_url: { url: imageUrl },
+            },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+    };
+
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        response = res;
+        successfulModel = modelName;
+        break;
+      } else {
+        lastErrText = await res.text();
+        console.warn(`[Groq API Warning] Model ${modelName} returned status ${res.status}: ${lastErrText}`);
+      }
+    } catch (fetchErr) {
+      console.warn(`[Groq API Fetch Warning] Model ${modelName} failed: ${fetchErr.message}`);
+    }
+  }
+
+  if (!response || !response.ok) {
+    throw new Error(`Groq API error: ${lastErrText || 'All Groq vision models failed.'}`);
+  }
+
+  console.log(`[Groq API Success] Successfully parsed using model: "${successfulModel}"`);
+
+  const resJson = await response.json();
+  const textOutput = resJson?.choices?.[0]?.message?.content;
+  return parseAndNormalizeOutput(textOutput);
 }
 
 // POST /api/timetable/parse
@@ -267,10 +404,8 @@ router.post('/parse', async (req, res) => {
       const buffer = fs.readFileSync(fileObj.filepath);
       base64Data = buffer.toString('base64');
 
-      // Cleanup temp file
       try { fs.unlinkSync(fileObj.filepath); } catch (_) {}
     } else if (req.body && req.body.fileData) {
-      // Base64 JSON payload
       mimeType = req.body.mimeType || 'image/jpeg';
       let rawBase64 = String(req.body.fileData);
       if (rawBase64.includes(',')) {
@@ -285,8 +420,26 @@ router.post('/parse', async (req, res) => {
       return res.status(400).json({ error: 'File content was empty or unreadable.' });
     }
 
-    const result = await callGeminiVisionAPI(base64Data, mimeType);
-    return res.json({ success: true, data: result });
+    // Try primary provider (Gemini Vision API) first
+    try {
+      const geminiResult = await callGeminiVisionAPI(base64Data, mimeType);
+      return res.json({ success: true, data: geminiResult, provider: 'gemini' });
+    } catch (geminiErr) {
+      console.warn('[Gemini Vision Failed — Attempting Groq Fallback]', geminiErr.message);
+
+      // Attempt fallback provider (Groq Vision API)
+      if (process.env.GROQ_API_KEY) {
+        try {
+          const groqResult = await callGroqVisionAPI(base64Data, mimeType);
+          return res.json({ success: true, data: groqResult, provider: 'groq' });
+        } catch (groqErr) {
+          console.error('[Groq Fallback Also Failed]', groqErr.message);
+          throw new Error(`Primary and Fallback AI scan failed. Gemini: ${geminiErr.message} | Groq: ${groqErr.message}`);
+        }
+      } else {
+        throw geminiErr;
+      }
+    }
   } catch (err) {
     console.error('[Timetable Parse Error]', err);
     return res.status(500).json({

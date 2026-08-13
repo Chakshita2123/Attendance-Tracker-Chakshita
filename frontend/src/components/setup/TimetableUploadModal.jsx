@@ -49,22 +49,62 @@ export default function TimetableUploadModal({ isOpen, onClose, data, setData })
     }
   }
 
+  const processAndCompressFile = (selectedFile, maxDimension = 1024, quality = 0.82) => {
+    return new Promise((resolve, reject) => {
+      if (!selectedFile) return reject(new Error('No file selected'))
+      const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf')
+      const reader = new FileReader()
+
+      if (isPdf) {
+        reader.onload = () => resolve({ dataUrl: reader.result, mimeType: 'application/pdf' })
+        reader.onerror = (err) => reject(err)
+        reader.readAsDataURL(selectedFile)
+        return
+      }
+
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          let width = img.width
+          let height = img.height
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width)
+              width = maxDimension
+            } else {
+              width = Math.round((width * maxDimension) / height)
+              height = maxDimension
+            }
+          }
+
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
+          resolve({ dataUrl: compressedDataUrl, mimeType: 'image/jpeg' })
+        }
+        img.onerror = () => {
+          resolve({ dataUrl: e.target.result, mimeType: selectedFile.type || 'image/jpeg' })
+        }
+        img.src = e.target.result
+      }
+      reader.onerror = (err) => reject(err)
+      reader.readAsDataURL(selectedFile)
+    })
+  }
+
   const handleUploadAndScan = async () => {
     if (!file) return
     setLoading(true)
     setError(null)
 
     try {
-      // Convert file to base64 payload for reliable cross-platform API request
-      const reader = new FileReader()
-      const base64Promise = new Promise((resolve, reject) => {
-        reader.onload = () => resolve(reader.result)
-        reader.onerror = (err) => reject(err)
-      })
-      reader.readAsDataURL(file)
-      const dataUrl = await base64Promise
+      // Compress image client-side to max 1024px to reduce token usage and payload size
+      const { dataUrl, mimeType } = await processAndCompressFile(file, 1024, 0.82)
 
-      const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg')
       const apiBase = getApiBaseUrl()
       const token = localStorage.getItem('markd_auth_token')
 
@@ -99,6 +139,7 @@ export default function TimetableUploadModal({ isOpen, onClose, data, setData })
       // Initialize extracted slots with selected flag
       const formattedSlots = timetable.map((slot) => ({
         ...slot,
+        start: slot.start || slot.startTime || slot.time || '09:00',
         selected: true,
         // If ambiguous, user must select a subject option before applying
         chosenSubject: slot.subject || (slot.options && slot.options.length > 0 ? slot.options[0] : ''),

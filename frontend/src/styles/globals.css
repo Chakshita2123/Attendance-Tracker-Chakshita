@@ -943,12 +943,12 @@ input[type="number"].input::-webkit-inner-spin-button { -webkit-appearance: none
 .subject-row.status-L::before { background: var(--amber); }
 .subject-row:hover { background: var(--bg-hover); border-color: var(--border-hi); }
 
-.subject-row-left { padding-left: 6px; }
+.subject-row-left { padding-left: 6px; min-width: 0; flex: 1; margin-right: 8px; }
 .subject-time { font-size: 10px; color: var(--teal); font-weight: 500; margin-bottom: 2px; }
-.subject-name { font-family: var(--font-head); font-size: 1rem; font-weight: 700; color: var(--text-1); }
+.subject-name { font-family: var(--font-head); font-size: 1rem; font-weight: 700; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* P / A / L buttons */
-.mark-group { display: flex; gap: 6px; }
+.mark-group { display: flex; gap: 6px; flex-shrink: 0; }
 .mark-btn {
   width: 38px; height: 34px;
   border-radius: var(--r-sm);
@@ -1211,11 +1211,20 @@ input[type="number"].input::-webkit-inner-spin-button { -webkit-appearance: none
 }
 
 @media (max-width: 480px) {
-  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stat-card { padding: 12px 8px; gap: 2px; }
+  .stat-label { font-size: 8px; letter-spacing: 0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stat-value { font-size: 1.35rem; }
+  .stat-sub { font-size: 9px; }
+
   .auth-card { padding: 28px 18px; }
-  .tracker-toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
-  .tracker-toolbar-left, .tracker-toolbar-right { width: 100%; }
-  .tracker-toolbar-left .btn, .tracker-toolbar-right .btn { flex: 1; justify-content: center; }
+  
+  .tracker-toolbar { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+  .tracker-toolbar-left { display: flex; gap: 8px; flex: 1; min-width: 180px; }
+  .tracker-toolbar-left .btn { flex: 1; justify-content: center; }
+  .tracker-toolbar-right { flex-shrink: 0; }
+  .tracker-toolbar-right .btn { justify-content: center; }
+
   .historical-attendance-row { flex-direction: column; align-items: flex-start; }
   .historical-attendance-inputs { width: 100%; justify-content: space-between; }
   .historical-attendance-inputs .input-wrap { flex: 1; }

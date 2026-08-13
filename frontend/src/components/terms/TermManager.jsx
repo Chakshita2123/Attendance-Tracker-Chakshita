@@ -43,7 +43,7 @@ export default function TermManager({ terms, currentTerm, createTerm, updateTerm
 
   return (
     <TiltCard className="card mb-md">
-      <div className="flex-between mb-sm" style={{ alignItems: 'center' }}>
+      <div className="flex-between mb-sm" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
         <div className="setup-step-label" style={{ marginBottom: 0 }}>
           <Calendar size={16} color="var(--teal)" style={{ marginRight: 6 }} /> ACADEMIC TERMS / SEMESTERS
         </div>
